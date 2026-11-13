@@ -461,6 +461,7 @@ $$
 
 - **Implementation distinction**: on a single-period panel $\ln btm$ is collinear with the fixed effects. A rank-deficient, non-converged or extreme fit therefore falls back to $\beta_k=\sigma_k-1$, with the reason recorded. Design B halts at the iteration cap, and every catalogue callable must have been invoked.
 
+
 ### Task 26 — `run_task_26`
 
 - **Inputs**: `study_config` (grid axes, Table 1–3 quantity keys), `orchestrator` (injected Chain B orchestrator), `output_dir`, `dependency_outputs`, `audit_fraction`.
