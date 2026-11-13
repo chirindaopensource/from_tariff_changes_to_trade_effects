@@ -143,7 +143,7 @@ $$
 
 An MFN increase leaves a preferential exporter with $\Delta\tau_{ik}=0$ (eq. 2), and yet its market access changes.
 
-**The CES reference tariff and the bilateral tariff margin.** With elasticity of substitution $\sigma_k>1$ across origins and normalised CES weights $\sum_i\alpha_i=1$:
+**The CES reference tariff and the bilateral tariff margin.** With elasticity of substitution $\sigma_k\gt 1$ across origins and normalised CES weights $\sum_i\alpha_i=1$:
 
 $$
 1+T_{kt}=\left[\sum_{i}\alpha_i\left(1+\tau_{ikt}\right)^{1-\sigma_k}\right]^{\frac{1}{1-\sigma_k}}\qquad (3),\qquad\qquad btm_{ikt}=\frac{1+T_{kt}}{1+\tau_{ikt}}\qquad (4).
@@ -180,7 +180,7 @@ Because the domestic node has $\tau\equiv 0$ in every state, a uniform shock to 
 $$
 \begin{aligned}
 \text{Liberalization:}\quad & \tau_{Bk}\downarrow\ \Rightarrow\ T_k\downarrow\ \Rightarrow\ btm_{Ak}\downarrow\qquad \text{preference erosion},\cr
-\text{Protection:}\quad & \tau^{MFN}_{Bk}\uparrow\ \Rightarrow\ T_k\uparrow\ \Rightarrow\ btm_{Ak}\uparrow\qquad \text{preference amplification}.
+\text{Protection:}\quad & \tau_{Bk}^{MFN}\uparrow\ \Rightarrow\ T_k\uparrow\ \Rightarrow\ btm_{Ak}\uparrow\qquad \text{preference amplification}.
 \end{aligned}
 $$
 
@@ -202,7 +202,7 @@ $$
 \text{initial benchmark}\rightarrow\widehat\beta^{(1)}\rightarrow\widehat\sigma^{(1)}\rightarrow T^{CES,(1)}\rightarrow btm^{(1)}\rightarrow\widehat\beta^{(2)}\rightarrow\widehat\sigma^{(2)}\rightarrow\cdots
 $$
 
-Under eq. (14) as specified, saturated in $\delta_{kt}$ (Design A), $\partial\hat\beta_k/\partial\sigma_k=0$: every $\sigma$ is a fixed point and the iteration is stationary at its initial condition, which Task 15 documents. Stability is tested through the spectral radius of the update map's Jacobian, $\rho(J)<1$.
+Under eq. (14) as specified, saturated in $\delta_{kt}$ (Design A), $\partial\hat\beta_k/\partial\sigma_k=0$: every $\sigma$ is a fixed point and the iteration is stationary at its initial condition, which Task 15 documents. Stability is tested through the spectral radius of the update map's Jacobian, $\rho(J)\lt 1$.
 
 **The counterfactual (eqs. 15–18).** The benchmark is recomputed from the complete counterfactual schedule:
 
@@ -213,7 +213,7 @@ $$
 The proportional response (Lai and Zhu, 2004) and its value at observed baseline trade are:
 
 $$
-\Delta Trade_{ik}=\frac{\widehat M_{ik}(btm^1_{ik})-\widehat M_{ik}(btm^0_{ik})}{\widehat M_{ik}(btm^0_{ik})}\qquad (16),\qquad\qquad TradeEffect_{ik}=M^0_{ik}\,\Delta Trade_{ik}\qquad (17).
+\Delta Trade_{ik}=\frac{\widehat M_{ik}(btm^1_{ik})-\widehat M_{ik}(btm^0_{ik})}{\widehat M_{ik}(btm^0_{ik})}\qquad (16),\qquad\qquad TradeEffect_{ik}=M^0_{ik}\thinspace\Delta Trade_{ik}\qquad (17).
 $$
 
 Under eq. (14) with the fixed effects held fixed, $\Delta Trade_{ik}=(btm^1_{ik}/btm^0_{ik})^{\hat\beta_k}-1$.
@@ -229,7 +229,7 @@ $$
 **The literature space.** For coding matrix $c_{se}\in\lbrace 0, 0.5, 1\rbrace$ over nine elements, the Gower dissimilarity is:
 
 $$
-D_{ss'}=\frac{1}{9}\sum_{e=1}^{9}\left\lvert c_{se}-c_{s'e}\right\rvert\in\left\lbrace 0,\tfrac{1}{18},\dots,1\right\rbrace,\qquad p_s=\frac{\sum_e c_{se}\,u_e}{\sum_e c_{se}},\quad u_e=R\left(\cos\theta_e,\sin\theta_e\right).
+D_{ss'}=\frac{1}{9}\sum_{e=1}^{9}\left\lvert c_{se}-c_{s'e}\right\rvert\in\left\lbrace 0,\tfrac{1}{18},\dots,1\right\rbrace,\qquad p_s=\frac{\sum_e c_{se}\thinspace u_e}{\sum_e c_{se}},\quad u_e=R\left(\cos\theta_e,\sin\theta_e\right).
 $$
 
 ## Features
@@ -264,12 +264,12 @@ The notebook works through the paper in eleven phases.
 
 - *Task 4* codes the affiliation matrix (primary and independent second pass), computes per-element Cohen's $\kappa$ with bootstrap intervals, and adjudicates against written definitions.
 - *Task 5* computes the Gower matrix, verifies the half-unit grid and scores the three published distances.
-- *Task 6* places each study at its claim-weighted barycentre, repels overlapping nodes under a Kendall-$\tau$ order check, and audits Figure 1.
+- *Task 6* places each study at its claim-weighted barycentre, repels overlapping nodes under a Kendall $\tau$ order check, and audits Figure 1.
 
 **Phase III: The panel and the competitive network (Tasks 7 and 8).**
 
-- *Task 7* harmonises HS flows to ISIC Rev. 3, resolves baseline tariffs by an ordered cascade (APPLIED, then $\min(\text{PREF},\text{MFN})$), and partitions the panel into five exclusion buckets.
-- *Task 8* builds $V_k=\lbrace i:M_{ik}>0\rbrace\cup\lbrace\mathrm{DOM}\rbrace$ under the zero-domestic-tariff identifying assumption.
+- *Task 7* harmonises HS flows to ISIC Rev. 3, resolves baseline tariffs by an ordered cascade, APPLIED first and then $\min(\text{PREF},\text{MFN})$, and partitions the panel into five exclusion buckets.
+- *Task 8* builds $V_k=\lbrace i:M_{ik}\gt 0\rbrace\cup\lbrace\mathrm{DOM}\rbrace$ under the zero-domestic-tariff identifying assumption.
 
 **Phase IV: CES measurement (Tasks 9 to 11).**
 
@@ -628,7 +628,7 @@ run_task_25(
 - **Benchmark and margin (eqs. 3, 4, 18):**
 
 $$
-1+T^{s}_{k}=\left[\sum_{i\in V_k}\alpha_i\left(1+\tau^{s}_{ik}\right)^{1-\sigma_k}\right]^{\frac{1}{1-\sigma_k}},\qquad BTM^{s}_{ik}=\frac{1+T^{s}_{k}}{1+\tau^{s}_{ik}},\qquad s\in\lbrace 0,CF\rbrace ,\qquad V_k=\lbrace i:M_{ik}>0\rbrace\cup\lbrace\mathrm{DOM}\rbrace .
+1+T_{k}^{s}=\left[\sum_{i\in V_k}\alpha_i\left(1+\tau_{ik}^{s}\right)^{1-\sigma_k}\right]^{\frac{1}{1-\sigma_k}},\qquad BTM_{ik}^{s}=\frac{1+T_{k}^{s}}{1+\tau_{ik}^{s}},\qquad s\in\lbrace 0,CF\rbrace ,\qquad V_k=\lbrace i:M_{ik}>0\rbrace\cup\lbrace\mathrm{DOM}\rbrace .
 $$
 
 - **Estimation (eq. 14) and the declared map:**
@@ -3393,7 +3393,7 @@ These are mechanical consequences of the declared calibration, which is the haza
 T5 checks the limit $\lim_{\sigma\to\infty}(1+T_k)=\min_i(1+\tau_i)$ at the finite $\sigma_\infty=1000$ of `config.yaml`, to $10^{-6}$. The raw gap cannot meet that tolerance at $\sigma=1000$, so T5 binds a Laplace-extraction statistic: the aggregator multiplied by $A^{1/(\sigma_\infty-1)}$. Here $A$ is the summed weight of every supplier tied at the minimum factor (relative tolerance $10^{-12}$), because
 
 $$
-1+T_k\ \longrightarrow\ \Bigl(\sum_{i:\,\tau_i=\tau_{\min}}\alpha_i\Bigr)^{\frac{1}{1-\sigma}}\left(1+\tau_{\min}\right)\qquad(\sigma\to\infty).
+1+T_k\ \longrightarrow\ \Bigl(\sum_{i:\thinspace\tau_i=\tau_{\min}}\alpha_i\Bigr)^{\frac{1}{1-\sigma}}\left(1+\tau_{\min}\right)\qquad(\sigma\to\infty).
 $$
 
 **The tie fix.** T5 originally used the weight $\alpha_{i^\ast}$ of a single minimising supplier $i^\ast$. That is wrong whenever the minimum is shared, as it is here: the domestic node and every duty-free partner sit at $\tau=0$. It made T5 fail at $6.66\times10^{-3}$. The notebook's `run_test_battery` (Task 25) and `_build_chain_a_test_entries_task_22` (Task 22) now use the tie-summed weight $A$. Their signatures and return keys are unchanged; each T5 entry additionally reports how many suppliers or market-states were tied.
