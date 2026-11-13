@@ -1,0 +1,496 @@
+## Key callables, Tasks 1 to 27
+
+This document discusses the 27 task orchestrators of `from_tariff_changes_to_trade_effects_edited.ipynb`, one per task and in notebook order: `run_task_1` to `run_task_27`. 
+
+Each orchestrator is the last callable in its task cell. It validates the task's inputs, calls the task's step callables in their contractual order and writes the task's artefacts. The step callables and private helpers are described inside their parent task, not counted separately.
+
+Python implementation author: **CS Chirinda**.
+
+**Sources.** Each description is taken from the orchestrator's signature and documented contract, from the docstrings and code of the step callables it calls, and from the notebook's `STUDY_CONFIG`. The methodological standard is the paper, Cipollina and De Benedictis (2026), *From Tariff Changes to Trade Effects: A Practical Framework for Empirical Trade Policy Analysis* (`latex_context.txt`). Quotations come from that source.
+
+**How the 27 tasks fit together.** The pipeline follows the paper's four-step sequence, tariff shock → market access → elasticity → trade effect, plus the two-mode literature map of Section 1.1:
+
+- Tasks 1–3: input validation, cleansing, the test battery and the disclosure ledger.
+- Tasks 4–6 (Chain A): the literature space, coding, Gower distances and layout.
+- Tasks 7–11 (Chain B, measurement): panel, competitive node set, CES weights, benchmark, margin.
+- Tasks 12–15 (elasticity): identification, PPML, the $\beta\to\sigma$ map, the fixed point.
+- Tasks 16–19 (counterfactual): scenario, counterfactual margins, trade effects, attribution.
+- Tasks 20–24 (reporting and audit): Tables 1–3, the algebraic tests, sign patterns, the calibration hazard.
+- Task 25: the end-to-end run.
+- Task 26: the sensitivity grid.
+- Task 27: the deposit.
+
+**Format of each entry.** Each task has the same seven fields: Inputs, Process, Outputs, Transformation (how input data become output data), Research role (the element of the paper that the callable implements, with a quotation), Equations, and Implementation distinction (where the code makes a declared choice the paper leaves open).
+
+**Notation.**
+
+- Indices: product (HS6 market) $k$; supplier $i$ in the competitive node set $V_{kt}$, which includes the domestic node $\mathrm{DOM}$; year $t$; state $s\in\lbrace0,CF\rbrace$; ISIC Rev. 3 industry $g$.
+- Tariffs and weights: applied tariff $\tau_{ikt}$; CES weight $\alpha_i$; elasticity of substitution $\sigma_k$; reference tariff $T_{kt}$.
+- Derived quantities: bilateral tariff margin $btm_{ikt}$; benchmark weight $\omega_{ik}$; trade coefficient $\beta_k$; imports $M_{ikt}$; baseline trade $M^0_{ik}$.
+
+Equation numbers are the paper's:
+
+$$
+(3)\ \ 1+T_{kt}=\left[\sum_{i}\alpha_i(1+\tau_{ikt})^{1-\sigma_k}\right]^{\frac{1}{1-\sigma_k}},\qquad (4)\ \ btm_{ikt}=\frac{1+T_{kt}}{1+\tau_{ikt}},\qquad (14)\ \ E[M_{ikt}\mid X]=\exp\left[\beta_k\ln btm_{ikt}+\gamma_{it}+\delta_{kt}\right],
+$$
+
+$$
+(16)\ \ \Delta Trade_{ik}=\frac{\widehat M_{ik}(btm^1_{ik})-\widehat M_{ik}(btm^0_{ik})}{\widehat M_{ik}(btm^0_{ik})},\qquad (17)\ \ TradeEffect_{ik}=M^0_{ik}\thinspace\Delta Trade_{ik},\qquad (19)\ \ \Delta\ln BTM_{ikt}=-\Delta\ln(1+\tau_{ikt})+\Delta\ln(1+T_{kt}).
+$$
+
+**Data boundary.** Every published figure below (Table 1 elasticities and margins, Table 2 and Table 3 effects, the Gower distances 0.11, 0.28 and 0.33) is a comparison target that the code checks, never a value an orchestrator returns as computed. The notebook's end-to-end execution (Task 25) runs on a frozen synthetic fixture of 10 markets with 6 nodes each (five foreign suppliers plus the domestic node), so its arithmetic is verified against known answers rather than against the paper's data. Every choice the paper leaves open is tagged `[G]`, `[X]` or `[UNSPECIFIED IN MANUSCRIPT]` in `STUDY_CONFIG` and registered in the disclosure ledger of Task 3.
+
+### Task 1 — `run_task_1`
+
+- **Inputs**: `ingested` (eight frames: `df_itpde_bilateral`, `df_itpde_domestic`, `df_wits_trains`, `df_tariff_tracker`, `df_study_corpus`, `df_affiliation_matrix`, `df_hs_isic_concordance`, `df_calibrated_elasticities`), `study_config`, `dtype_admissibility`, `element_codebook`, `tag_registry`, `dependency_manifest`, `output_dir`.
+- **Process**: probes the twelve mandated objects (the eight frames and four companion mappings), then runs Step 1 (input validation), Step 2 (configuration provenance) and Step 3 (cross-block coherence) in order.
+- **Outputs**: `step1`, `step2`, `step3`, `verdict` (`"PASS"` iff all three steps pass), `objects_visited`, `report_path` (`task_1_report.json`, embedding per-file SHA-256 digests).
+- **Transformation**: each frame passes three schema layers (exact column set, admissible dtype, nullability) and seven domain predicates, and is fingerprinted. Each configuration leaf is tested for its provenance tag (`S`, `I`, `G` or `X`) before its value range; a `G` leaf must cite a registered imputation id. Step 3 checks the chain interface, fixed-point degeneracy, denominator consistency and the conservation-versus-paper-target relation.
+- **Research role**: freezes and fingerprints the inputs of Section 4: "bilateral and domestic trade flows from the US International Trade and Production Database for Estimation (ITPDE) with applied and MFN tariffs from WITS–TRAINS".
+- **Equations**: the parameter domain of Eq. (3), plus the declared rules for the scenario increments and the excluded conventional elasticity:
+
+$$
+\sigma_k>1,\qquad \sum_i\alpha_i=1,\qquad \alpha_i\ge0,\qquad \Delta^{\mathrm{inc}}\in(0,\thinspace0.5],\qquad \sigma^{\mathrm{excl}}=2 .
+$$
+
+- **Implementation distinction**: a missing or ill-typed object raises one `ValueError` naming every defect at once. A failed step returns `"FAIL"` rather than raising, except that Step 3 raises on a malformed dependency manifest or an absent design choice.
+
+### Task 2 — `run_task_2`
+
+- **Inputs**: `ingested` (the eight frames), `study_config`, optional `task_1_output`; keyword `domestic_counterparty_map`, `output_dir`.
+- **Process**: three cleansing steps: the ITPDE tables (seven operations), WITS–TRAINS (four rules) and the reference tables (four rules). It then combines their ledgers and builds the exclusion table.
+- **Outputs**: `step1`, `step2`, `step3`, `ledger` (exactly 15 rows), `exclusion_table`, `upstream`, `output_files` (`cleanse_ledger.csv`, `exclusion_table.csv`).
+- **Transformation**:
+  - ITPDE: USA reporter only, import flag `M`, aggregate partners dropped, flow status classified, keys made unique, the domestic sentinel renamed to `DOM`, units converted to USD millions.
+  - WITS: ad valorem equivalents (AVE) capped at the prohibitive ceiling, unit guard, group-code broadcast, in-quota rates retained.
+  - Reference tables: corpus citations resolved, concordance weights populated, elasticities cross-checked against Table 1.
+- **Research role**: prepares the data that Section 4 says "cover 2016–2021 and are harmonised across product and industry classifications". It also corrects the corpus anomaly in which "Dang et al., 2003" is dated before the trade war it studies.
+- **Equations**: the declared ceiling ($\bar\tau=1.00$) keeps $1+\tau$ finite inside the power mean; concordance weights are trade-value proportional:
+
+$$
+\tau^{\mathrm{AVE}}_{ikt}\leftarrow\min\left(\tau^{\mathrm{AVE}}_{ikt},\ \bar\tau\right),\qquad w_{h\to g}=\frac{M_{h\to g}}{\sum_{g'}M_{h\to g'}},\qquad 15=7+4+4\ \mathrm{ledger\ rows}.
+$$
+
+- **Implementation distinction**: the domestic table is deliberately not concatenated to the bilateral table here (that happens at Task 7). Hard-block conditions (wrong reporter, duplicate key, sentinel, unit, HS level, $\sigma$ mismatch) raise `ValueError`.
+
+### Task 3 — `run_task_3`
+
+- **Inputs**: `study_config` (algebraic tests, imputation register, verification targets), `tag_registry`, `dependency_manifest`, `output_dir`; keyword `task_1_report`, `registered_by`, `registration_date`.
+- **Process**:
+  1. Runs the sixteen-test battery on five synthetic fixtures.
+  2. Registers the twelve-row disclosure ledger `G1`–`G12` before any estimation.
+  3. Builds and audits the tolerance registry.
+- **Outputs**: `verdict`, `upstream_verdict`, `test_report_path`, `ledger_path`, `registry_path`, `n_tests`, `n_ledger_rows`, `registry_rows`.
+- **Transformation**:
+  - Each test becomes a row (`lhs`, `rhs`, residual, tolerance, verdict).
+  - Each register entry becomes a ledger row (primary rule, alternatives, consequence, downstream tasks, `is_executed = False`).
+  - The verification targets become a 100-row registry: 90 enumerated targets, nine $\kappa$ floors and one Kendall $\tau$ floor.
+- **Research role**: implements pre-data verification and the disclosure ledger that the paper's silences require, for example: "The exact mapping between $\beta_k$ and $\sigma_k$ depends on the underlying structural specification and should not be assumed independently of it."
+- **Equations**: the verdict rule and the declared tolerances:
+
+$$
+r_j=\lvert\mathrm{lhs}_j-\mathrm{rhs}_j\rvert\le\varepsilon_j;\quad \varepsilon_{T1-T3}=\mathrm{exact},\ \varepsilon_{T4,T10,T11,T13}=10^{-12},\ \varepsilon_{T5,T6}=10^{-6},\ \varepsilon_{T7,T8,T15}=10^{-15},\ \varepsilon_{T9}=10^{-14},\ \varepsilon_{T12,T14}=10^{-10},\ \varepsilon_{T16}=10^{-2}.
+$$
+
+- **Implementation distinction**: the verdict is the battery verdict. The ledger and registry audits raise rather than downgrade it, so a `[G]` leaf without a ledger row cannot pass silently.
+
+### Task 4 — `run_task_4`
+
+- **Inputs**:
+  - keyword `study_corpus` or `task1_result`, `studies_manifest`, `study_config`, `element_codebook`, `excluded_elements`;
+  - `primary_assignments` (coder C1), and either `second_assignments` or `llm_response_texts`, with `second_coder_id` (`C2` or `LLM_A`);
+  - `adjudication_decisions`, `output_dir`, `bootstrap_replicates` (1,000), `kappa_seed`.
+- **Process**: assembles the primary pass and the independent second pass, computes per-element Cohen's $\kappa$ with a percentile bootstrap interval ($\alpha=0.05$), then adjudicates disagreements against the 0.80 threshold.
+- **Outputs**: `df_affiliation_matrix`, `adjudication_record`, `kappa` (with `ci_lower`, `ci_upper`, `n_bootstrap`), `below_threshold`, `degenerate`, `task1_result_received`, `paths`, `llm_disclosure`.
+- **Transformation**: study abstracts become 17 × 9 codes, each non-zero code backed by a verbatim, offset-exact justification. A non-consensus cell takes the adjudicated value and the written definition invoked.
+- **Research role**: implements Section 1.1, step two: "The coding is based on the abstract alone", and "An element takes the value 1 when the abstract claims it, 0.5 when the claim is partial or implicit, and 0 otherwise".
+- **Equations**: $\kappa$ treats $0$, $0.5$, $1$ and `FLAG` as four nominal categories:
+
+$$
+c_{se}\in\lbrace0,\thinspace0.5,\thinspace1\rbrace,\qquad \kappa_e=\frac{p^{o}_e-p^{c}_e}{1-p^{c}_e},\qquad p^{c}_e=\sum_{q}p^{(1)}_{eq}\thinspace p^{(2)}_{eq},\qquad \kappa_e\ge0.80 .
+$$
+
+- **Implementation distinction**: the `FLAG` refuse-on-ambiguity category is admitted only in the second pass. A degenerate element ($p^c_e=1$) reports $\kappa$ as NaN with a note. The `LLM_A` branch carries a disclosure, because automated coding is an addition to, not a reproduction of, the published method.
+
+### Task 5 — `run_task_5`
+
+- **Inputs**: `df_affiliation_matrix`, `df_study_corpus`, `output_dir`, `upstream_task_1_output` (echoed by identity, never read).
+- **Process**: resolves the three anchor studies by author-surname stems (the reference paper, the merged Cipollina–Salvatici entry, Fugazza and Nicita), computes the Gower matrix, verifies the grid, and scores the three published targets.
+- **Outputs**: `task`, `stages`, `distance_matrix` (17 × 17), `half_unit_matrix` ($18D$, integer), `target_report`, `n_pairs` (136), `n_distinct_values`, `verdict`, `artefacts`, `upstream_task_1_output`.
+- **Transformation**: the 17 × 9 coding matrix becomes pairwise mean absolute differences, then exact integers on the half-unit grid.
+- **Research role**: implements Section 1.1, step three. The merged Cipollina et al. (2017) and Cipollina and Salvatici (2020) entry lies at 0.11 from the reference paper, "Fugazza and Nicita (2013) at 0.28, while every other study in the sample lies at 0.33 or beyond".
+- **Equations**: codes on $\lbrace0,0.5,1\rbrace$ put $D$ on the grid of eighteenths, so the targets are 2, 5 and at least 6 half-units:
+
+$$
+D_{ss'}=\frac19\sum_{e=1}^{9}\lvert c_{se}-c_{s'e}\rvert,\qquad 18D_{ss'}\in\lbrace0,1,\dots,18\rbrace,\qquad 0.11\approx\tfrac{2}{18},\ \ 0.28\approx\tfrac{5}{18},\ \ 0.33\approx\tfrac{6}{18}.
+$$
+
+- **Implementation distinction**: T1 (zero diagonal), T2 (symmetry) and T3 (integrality) are checked before acceptance. Computed values are never rounded toward a target and no code is altered to meet one; a miss is classified for remediation.
+
+### Task 6 — `run_task_6`
+
+- **Inputs**: `df_affiliation_matrix`, `df_study_corpus`, `upstream_task_5_output` or an explicit `half_unit_matrix`, `upstream_task_2_output` (unused), `output_dir`.
+- **Process**: builds the nine element vectors and the claim matrix, places each study at its barycentre (zero-claim studies at the origin), repels overlapping nodes while testing order preservation, audits the layout and writes five artefacts.
+- **Outputs**: `output_dir`, `coordinates`, `coordinates_original`, `displacements`, `tau_pre`, `tau_post`, `rho_post`, `n_pairs`, `sweeps_run`, `diagnostics`.
+- **Transformation**: codes become planar coordinates. Repulsion moves the two nodes of a close pair symmetrically along their joining line, so the pair's midpoint is preserved; Kendall $\tau$ and Spearman $\rho$ compare the $D$ ordering with Euclidean separations.
+- **Research role**: implements Section 1.1, step four: "each study is drawn at the barycentre of the elements it claims, weighted by the strength of the claim", and "a small repulsion term separates overlapping nodes without altering that ordering".
+- **Equations**: for a pair closer than the threshold $d^\ast$, with $d_{ij}=\lVert p_i-p_j\rVert$:
+
+$$
+u_e=R(\cos\theta_e,\sin\theta_e),\qquad p_s=\frac{\sum_e c_{se}u_e}{\sum_e c_{se}},\qquad \delta=\min(\delta_{\max},\thinspace d^\ast-d_{ij}),\quad p_i\leftarrow p_i+\tfrac{\delta}{2}\hat u_{ij},\quad p_j\leftarrow p_j-\tfrac{\delta}{2}\hat u_{ij}.
+$$
+
+- **Implementation distinction**: sweeps stop once $\tau\ge0.95$ and moves are negligible. A final $\tau$ below 0.95 is reported as a finding, not forced to 1. The nine-row diagnostic records the figure's published state:
+  - 18 edges drawn in the source, against 153 possible study–element pairs;
+  - 5 solid reference edges in the text, against 3 in the figure;
+  - degree 0 for element E7;
+  - three unused legend categories.
+
+### Task 7 — `run_task_7`
+
+- **Inputs**: `task_2_output` (`step1`, `step2`, `step3`), `study_config`; keyword `allocation_rule` (`"trade_value_proportional"`), `concordance_version`, `task_1_output`, `output_dir`.
+- **Process**: harmonises HS flows onto ISIC Rev. 3 destinations, assembles the long-form analysis panel with tariffs, then partitions it into the five exclusion buckets.
+- **Outputs**: `flows`, `allocation_report`, `panel`, `panel_report`, `exclusion_table`, `unmapped_count`, `unmapped_trade_share`, `total_source_value`, `total_allocated_value`, `upstream`.
+- **Transformation**: each flow is split across its ISIC destinations, conserving value within $10^{-6}$ relative; unmatched flows keep their value and are flagged. The baseline tariff is resolved by an ordered cascade.
+- **Research role**: implements Section 3, step one: "the policy experiment should be defined at the most disaggregated level at which tariff treatment differs across exporters and products".
+- **Equations**:
+
+$$
+M_{igt}=\sum_h w_{h\to g}M_{iht},\quad \sum_g w_{h\to g}=1;\qquad \tau^0_{ikt}=\begin{cases}0,& i=\mathrm{DOM}\cr \tau^{\mathrm{APPLIED}}_{ikt},&\mathrm{if\ observed}\cr \min\left(\tau^{\mathrm{PREF}}_{ikt},\tau^{\mathrm{MFN}}_{ikt}\right),&\mathrm{otherwise\ if\ either\ exists}\cr \mathrm{missing},&\mathrm{otherwise.}\end{cases}
+$$
+
+- **Implementation distinction**:
+  - The applied rate is never replaced by the preferential rate, because it already embeds utilisation.
+  - Exclusion precedence: missing tariff > missing concordance > missing flow > $\sigma_k=2$ filter.
+  - $\sigma_k=2$ cells are flagged, not removed, and the panel itself is never mutated.
+
+### Task 8 — `run_task_8`
+
+- **Inputs**: `task_7_output` (its `panel`), `study_config` (`node_augmentation`); keyword `pre_filter_absorption_usd`, `task_1_output`, `output_dir`.
+- **Process**: bridges the Task 7 schema, builds the foreign node set of each market, adds the domestic node under rule `G_6b`, and tabulates the identification-critical properties.
+- **Outputs**: exactly `foreign`, `augmented` (`augmented_nodes`, `domestic_presence_status`) and `identification`.
+- **Transformation**: per market, membership is gated on `flow_status == "positive"`: missing is not zero, and aggregate codes never enter. Per cell it records $\lvert V_k\rvert$, coverage, the domestic share and the median MFN rate; per industry, the Spearman correlation of $\lvert V_k\rvert$ with the MFN rate (descriptive only).
+- **Research role**: implements the benchmark population of Section 4: "Domestic US trade is included because US producers form part of the competitive benchmark faced by foreign suppliers, although domestic transactions are not subject to import tariffs."
+- **Equations**:
+
+$$
+V_{kt}=V^{\mathrm{foreign}}_{kt}\cup\lbrace\mathrm{DOM}\rbrace\ \ \mathrm{iff\ DOM\ is\ present},\qquad \tau^{s}_{\mathrm{DOM},kt}=0\ \ \forall s\in\lbrace0,CF\rbrace,\qquad s^{d}_{kt}=\frac{M_{\mathrm{DOM},kt}}{\sum_{i\in V_{kt}}M_{ikt}}.
+$$
+
+- **Implementation distinction**: a zero domestic tariff is a permanent identifying assumption, and any configuration that declares otherwise is rejected. Industries with $s^d\gt0.95$ or $s^d\lt0.30$ are flagged. The coverage denominator is the declared pre-filter absorption and is never recomputed.
+
+### Task 9 — `run_task_9`
+
+- **Inputs**: `ingested` (bilateral, domestic, WITS), `study_config`, `sigma_by_product`; optional `task_1_output`, `isic_by_product`, `design` (`"B"`, time-varying, or `"A"`, fixed at `baseline_year`), `flow_floor` ($10^{-6}$), `output_dir`.
+- **Process**: builds the foreign panel and its applied-tariff lookup (ceiling-capped; cells without a usable rate dropped under `drop_supplier_from_V_k`), adds `DOM` at $\tau=0$, then computes shares, inverts for $\alpha$ and verifies T13.
+- **Outputs**: `shares`, `alpha`, `t13`, `share_sum_min`, `share_sum_max`, `alpha_design`, `alpha_baseline_year`, `alpha_label`, `t13_residual_trajectory` and its path, `output_dir`, drop and cap counters, `task_1_provenance`.
+- **Transformation**: positive flows become market shares; shares and tariff factors become normalised CES weights that reproduce the shares exactly.
+- **Research role**: supplies the weights of Eq. (3), where "$\alpha_i$ represents the corresponding normalized CES weight, with $\sum_i \alpha_i = 1$". The paper gives no rule for constructing them.
+- **Equations**: the exact inversion of the CES share condition:
+
+$$
+s_{ik}=\frac{M_{ik}}{\sum_{j\in V_k}M_{jk}},\qquad \tilde\alpha_i=s_{ik}(1+\tau_{ik})^{\sigma_k-1},\qquad \alpha_i=\frac{\tilde\alpha_i}{\sum_j\tilde\alpha_j},\qquad \max_{i,k}\left\lvert\frac{\alpha_i(1+\tau_{ik})^{1-\sigma_k}}{(1+T_k)^{1-\sigma_k}}-s_{ik}\right\rvert\le10^{-12}.
+$$
+
+- **Implementation distinction**: $\alpha$ is labelled "calibrated, not identified". T13 certifies internal consistency only: a wrong $\sigma_k$ still passes because both sides use it. Under Design A, the weights frozen at the baseline year need not reproduce other years' shares.
+
+### Task 10 — `run_task_10`
+
+- **Inputs**: `markets` (`product_code`, `year`, `alpha`, `tau`, `sigma`, the domestic node included), `study_config` (limit constants $\sigma=1.0001$, $\sigma=1000$, tolerance $10^{-6}$), `output_dir`, `upstream_artefact`.
+- **Process**: computes the baseline benchmark in log space, audits the conditioning of each market, verifies the two analytic limits on declared fixtures, and writes the ledger and conditioning report.
+- **Outputs**: `benchmark` (`one_plus_t`, `ln_one_plus_t`, shifted-argument extrema), `limits`, `conditioning`, `n_markets`, `upstream_received`, `output_dir`, two CSV paths, `upstream_artefact_keys`, `limit_fixtures`.
+- **Transformation**: each market's weights, tariffs and elasticity become one reference factor through a max-shifted log-sum-exp, which avoids underflow at large $\sigma_k$ (Table 1 reaches 64.33).
+- **Research role**: implements Eq. (3): "Under CES preferences, the reference tariff for product $k$ can be expressed as" a power mean of tariff factors with exponent $1-\sigma_k$.
+- **Equations**:
+
+$$
+\ln(1+T_k)=\frac{1}{1-\sigma_k}\ \mathrm{LSE}_{i}\left[\ln\alpha_i+(1-\sigma_k)\ln(1+\tau_{ik})\right],\qquad \lim_{\sigma\to\infty}(1+T_k)=\min_i(1+\tau_i),\qquad \lim_{\sigma\to1}(1+T_k)=\prod_i(1+\tau_i)^{\alpha_i}.
+$$
+
+- **Implementation distinction**: the orchestrator raises `RuntimeError`, blocking the pipeline, when the largest limit deviation exceeds the tolerance. Markets with condition number $\max_i v_i/\min_i v_i$ above the threshold are flagged and retained, never dropped.
+
+### Task 11 — `run_task_11`
+
+- **Inputs**: `ingested` (bilateral, domestic, WITS, concordance, elasticities), `study_config` (baseline year 2017, ceiling, HS6 level, aggregate codes), `output_dir`, `upstream_report`.
+- **Process**: normalises flows to the baseline year and selects tariffs, then computes shares, weights and benchmarks through the verified Task 9 and Task 10 callables. It then builds the margins and runs T7, T4 and T8.
+- **Outputs**: four artefact paths (`task_11_margin_cells.csv`, `task_11_industry_summary.csv`, `task_11_market_omega_sums.csv`, `task_11_attribution.json`), `n_cells`, `n_markets`, `max_recompute_abs_diff`, `max_omega_deviation`, `max_attribution_residual`, `baseline_year`, `upstream_report_present`.
+- **Transformation**:
+  - Each cell's tariff and its market's benchmark become a margin.
+  - T7 recomputes that margin from raw $\alpha$, $\sigma$ and $\tau$.
+  - T8 runs on a synthetic state in which every foreign tariff rises by a declared increment and DOM does not.
+- **Research role**: implements Eq. (4): "Values above one indicate more favorable tariff treatment than the reference tariff, while values below one indicate a relative disadvantage."
+- **Equations**:
+
+$$
+btm_{ikt}=\frac{1+T_{kt}}{1+\tau_{ikt}},\qquad \omega_{ik}=\frac{\alpha_i(1+\tau_{ik})^{1-\sigma_k}}{(1+T_k)^{1-\sigma_k}},\qquad \sum_{i\in V_k}\omega_{ik}=1\ \ (\pm10^{-12}).
+$$
+
+- **Implementation distinction**:
+  - T4 uses the stored benchmark rather than a recomputation, so it is not a tautology.
+  - T8 must stay strictly below $10^{-15}$, and a zero increment is rejected as a trivial test.
+  - Products without an elasticity or an industry mapping are recorded, not silently dropped.
+
+### Task 12 — `run_task_12`
+
+- **Inputs**: `panel` (`product_code`, `year`, `exporter_iso3`, `flow_value`, `tau`, `T`, and others), `study_config` (shipped `design_choice = "Design_B_over_identified"`), `output_dir`, `upstream`.
+- **Process**: runs the Design A rank test, estimates Design B as a diagnostic, overrides the design choice to `Design_A_restricted` on a deep copy of the configuration, builds the four-row DesignReport, and writes the selection JSON and the replication-note head.
+- **Outputs**: `design_choice`, `amended_design_choice`, `diagnostic_design`, `design_A_stationarity`, `finding`, `design_b`, `design_report`, `g_design_override`, `g14b`, `upstream_provenance`, `upstream_keys`, `output_files`, `output_dir`.
+- **Transformation**: the panel's fixed-effect design is extended with $\ln(1+T_{kt})$ and the rank increase is measured. A zero increase means the benchmark adds no identifying variation.
+- **Research role**: tests the paper's Eq. (14) design, in which "exporter-time and product-time fixed effects absorb unobserved determinants of trade" in "the single-importer setting considered here".
+- **Equations**: $\ln(1+T_{kt})$ varies only in $(k,t)$, so it is absorbed by $\delta_{kt}$, and only own-tariff variation identifies $\beta_k$:
+
+$$
+\beta_k\ln btm_{ikt}+\delta_{kt}=-\beta_k\ln(1+\tau_{ikt})+\underbrace{\delta_{kt}+\beta_k\ln(1+T_{kt})}_{\tilde\delta_{kt}};\qquad \mathrm{B}:\ \ln\mu=\beta^{\mathrm{own}}_k\ln(1+\tau)+\beta^{\mathrm{bm}}_k\ln(1+T)+\gamma_{it}+\delta_k+\delta_t+\theta\ln E_{kt},\quad H_0:\beta^{\mathrm{bm}}_k=-\beta^{\mathrm{own}}_k .
+$$
+
+- **Implementation distinction**: the caller's configuration is never mutated. The override is recorded as ledger entry `G_design_override`, citing the identity argument. The expenditure proxy $E_{kt}=\sum_iM_{ikt}$ is declared `[X]` as `G_14b`.
+
+### Task 13 — `run_task_13`
+
+- **Inputs**: `panel` (zero flows retained), `study_config` (`estimation_settings`), `output_dir`, `design` (`"Design_A_restricted"` by default), `sigma_map` (`"sigma = beta + 1"`), `task1_output` (only `verdict` read).
+- **Process**: absorbs the high-dimensional fixed effects by alternating projections. It then estimates PPML by IRLS, applying the separation rule once (detect, drop, refit), and attaches cluster-robust inference and the $\sigma$ delta method to every estimate.
+- **Outputs**: a JSON-ready report, including:
+  - the echoed estimation settings;
+  - absorption convergence and iterations, `fe_group_names`, `separation_count`, `separation_trade_share`, `converged`;
+  - `zero_flows_retained`, `estimates`, `n_estimates`, `upstream_task1_verdict`, `report_path`.
+- **Transformation**: under Design A, each industry's cells become one $\hat\beta_k$ on $\ln btm$, with exporter-time and product-time effects. Each estimate carries CGM (primary) and CR1 (sensitivity) standard errors, with two-way clustering on exporter and product-time.
+- **Research role**: implements Section 3, step three: "PPML provides a natural estimator for this class of models because it accommodates zero trade flows and remains consistent in the presence of heteroskedasticity".
+- **Equations**: the PPML first-order conditions over observations $n$, and the declared map with its delta-method error:
+
+$$
+\sum_{n}\left(M_n-\exp(x_n^\top b)\right)x_n=0,\qquad \hat\sigma_k=\hat\beta_k+1,\qquad \mathrm{se}(\hat\sigma_k)=\left\lvert\frac{\partial\hat\sigma_k}{\partial\hat\beta_k}\right\rvert\mathrm{se}(\hat\beta_k)=\mathrm{se}(\hat\beta_k).
+$$
+
+- **Implementation distinction**: the report records that the paper publishes no $\hat\beta_k$ (`parameter_estimates_reported_in_paper = 0`). Absorption method, tolerance $10^{-8}$, iteration cap 1,000, separation rule and clustering are all declared imputations.
+
+### Task 14 — `run_task_14`
+
+- **Inputs**: `study_config`, `output_dir`, `design` (`"Design_A_calibration"` by default; `"Design_A_restricted"` or `"Design_B_over_identified"` for re-estimation), `task13_output`, `task1_output`.
+- **Process**:
+  - On the calibration path, reads the Table 1 industry means $\bar\sigma_g$ and recovers $\hat\beta_g$.
+  - On the re-estimation paths, takes $\hat\beta$ and CGM p-values from Task 13.
+  - On either path, applies both maps, records $\hat\sigma\le1$ violations, applies Filters 1 and 2, and summarises the distribution shift.
+- **Outputs**: `design`, `sigma_map`, `calibration_note`, `n_industries`, `beta_hat`, `sigma`, `sigma_alternative`, `table1_roundtrip_max_abs_residual`, `g4_significance_threshold_source`, `filters`, `distributions`, `sigma_eq_2_diagnostic`, `sigma_lower_bound_violations`, `report_path`.
+- **Transformation**: elasticities become coefficients, or coefficients become elasticities, under each map. Filter counts and trade shares partition the input rows.
+- **Research role**: implements the selection in Section 4: "The reported results are restricted to products with positive and statistically significant estimated elasticities", and "Industries assigned the conventional substitution elasticity of two are excluded".
+- **Equations**:
+
+$$
+\hat\sigma_k=\hat\beta_k+1\ \ (\mathrm{primary}),\qquad \hat\sigma_k=\hat\beta_k\ \ (\mathrm{alternative});\qquad F_1:\ \hat\beta_k\gt0\ \wedge\ p_k\lt0.05,\qquad F_2:\ \lvert\hat\sigma_k-2\rvert\le10^{-12}.
+$$
+
+- **Implementation distinction**: on the calibration path the round trip measures an identity (about $10^{-15}$), not a validation, and the pre-filter distribution is unobservable. Filter 1 is also evaluated at 0.01 and 0.10. The upward shift that positive-significant selection induces in the mean $\hat\sigma$ is reported as a finding.
+
+### Task 15 — `run_task_15`
+
+- **Inputs**: `panel` (type and non-emptiness only), `study_config` (the 17-entry $\sigma$ table; P3 tolerance $10^{-8}$, cap 500; T14 tolerance $10^{-10}$), `output_dir`, `upstream` (Task 12 output: `amended_design_choice`, `finding`, and for Design B an injected `update_map`).
+- **Process**: under Design A, documents why the fixed point is vacuous and reports T14 as a first-class not-applicable pass. Under Design B, it iterates the injected map, persists the trajectory and tests local stability.
+- **Outputs**: `design`, `vacuousness`, `iteration` (`diagnostic_only=True` under B), `fixed_point_iteration`, `stability`, `upstream_keys`, `output_dir`, `report_path`, `output_files`.
+- **Transformation**: a $\sigma$ vector becomes either a documented single pass or a logged trajectory with residuals, a spectral radius and per-industry stability.
+- **Research role**: implements Section 3's iterative procedure, "repeated until convergence is achieved, subject to the existence and stability of a fixed point":
+  $\mathrm{benchmark}\rightarrow\widehat\beta^{(1)}\rightarrow\widehat\sigma^{(1)}\rightarrow T^{CES,(1)}\rightarrow btm^{(1)}\rightarrow\widehat\beta^{(2)}\rightarrow\cdots$
+- **Equations**:
+
+$$
+\sigma^{(r+1)}=F(\sigma^{(r)}),\quad \lVert\sigma^{(r+1)}-\sigma^{(r)}\rVert_\infty\lt10^{-8};\qquad J_{\cdot j}=\frac{F(\sigma+he_j)-F(\sigma)}{h},\quad \rho(J)=\max_i\lvert\lambda_i(J)\rvert\lt1,\quad \lVert F(\sigma)-\sigma\rVert_\infty\lt10^{-10};\qquad \mathrm{A}:\ \frac{\partial\hat\beta_k}{\partial\sigma_k}=0 .
+$$
+
+- **Implementation distinction**: the paper does not give $F$. It is declared `[X]` and must be injected; the orchestrator never fabricates one. Non-convergence and divergence (a non-decreasing trailing window of residuals) are findings, and the iteration is never merged into primary outputs.
+
+### Task 16 — `run_task_16`
+
+- **Inputs**: `ingested` (`df_wits_trains`, `df_itpde_bilateral`, `df_itpde_domestic`, `df_tariff_tracker`), `study_config` (`scenario_construction`), `task_1_output`, `output_dir`.
+- **Process**:
+  1. Enumerates the partner set $S$ and the sectoral HS6 lists, and audits the tracker citations.
+  2. Applies rule precedence and the ceiling.
+  3. Counts marginal cells, enforcing two mandatory halts.
+- **Outputs**: `selected_partner_set_P`, `sectoral_hs_lists`, `n_cells`, `rule_counts`, `tau_cf_panel`, `tau_cf_path`, `rule_counts_path`, `task_1_output`.
+- **Transformation**: the baseline applied schedule becomes a cell-by-cell counterfactual schedule. Each cell is tagged with one of nine rule ids, from `none` to `ceiling_capped`.
+- **Research role**: implements Section 4's scenario: "an additional 10 percentage points for selected trading partners, 15 percentage points for Bolivia, and sector-specific additions of 25 percentage points for steel and aluminium and for motor vehicles and parts, and 50 percentage points for copper".
+- **Equations**: under the primary `"maximum"` precedence (the `"additive"` alternative sums the two increments), with $\bar\Delta=0.50$ and $\Delta_{\mathrm{DOM}}=0$:
+
+$$
+\tau^{CF}_{ik}=\tau^0_{ik}+\min\left(\max(\Delta^{P}_i,\Delta^{S}_k),\ \bar\Delta\right),\qquad \Delta^{P}_i=\begin{cases}0.15,& i=\mathrm{BOL}\cr 0.10,& i\in S\cr 0,&\mathrm{otherwise}\end{cases},\qquad \Delta^{S}_k=\begin{cases}0.25,& k\in\mathrm{HS4}\ 7208\mathrm{-}7229,\ 7601,7604,7606,7608\cr 0.25,& k\in\mathrm{HS4}\ 8701\mathrm{-}8705,\ 8708\cr 0.50,& k\in\mathrm{HS4}\ 7401\mathrm{-}7419\cr 0,&\mathrm{otherwise.}\end{cases}
+$$
+
+- **Implementation distinction**: "selected trading partners" is underspecified, so $S$ is enumerated as twelve ISO3 codes (MEX, CAN, JPN, DEU, KOR, GBR, FRA, ITA, BRA, IRQ, CHE, SAU). The amplification gainers CHN, IND and VNM are rejected. The HS lists and the ceiling are declared imputations, and the result is an applied, not a statutory MFN, change.
+
+### Task 17 — `run_task_17`
+
+- **Inputs**: `cells` (`product_code`, `year`, `partner_iso3`, `isic_2digit`, `alpha`, `tau_0`, `tau_cf`), `sigma_by_market`, `task1_result`, `output_dir`.
+- **Process**: recomputes the benchmark under both schedules, computes the counterfactual margins and their industry distribution, verifies T11 market by market, and renders the report.
+- **Outputs**: `markets`, `cells`, `by_industry` (count, mean, median, quartiles, minimum, maximum of the margin ratio), `t11`, `report_path`, `upstream`, `skip_count`.
+- **Transformation**: both schedules pass through one log-sum-exp kernel with identical $\alpha$ and an identical baseline $V_k$, so unchanged cells and DOM stay in the aggregation.
+- **Research role**: implements Section 3, step four: "A consistent counterfactual therefore requires recomputing $T_k^1$ from the complete counterfactual tariff structure before evaluating the resulting bilateral margins."
+- **Equations**: Eq. (18), and T11 for a uniform foreign shock $m$:
+
+$$
+BTM^{s}_{ikt}=\frac{1+T^{s}_{kt}}{1+\tau^{s}_{ikt}},\ s\in\lbrace0,CF\rbrace;\qquad (1+\tau_i)'=m(1+\tau_i)\ (i\ne\mathrm{DOM})\ \Rightarrow\ \frac{btm'_i}{btm_i}=c=\frac{1+T'}{m(1+T)}\ \forall i\ne\mathrm{DOM},\quad \frac{btm'_{\mathrm{DOM}}}{btm_{\mathrm{DOM}}}=mc,\quad 1+T\lt1+T'\lt m(1+T).
+$$
+
+- **Implementation distinction**:
+  - $V_k$ is fixed at baseline, so any entry or exit raises.
+  - A market without DOM is a first-class `N/A`, since uniform invariance then makes every margin unchanged.
+  - The per-industry mean of ratios is explicitly not Table 1's ratio of means.
+
+### Task 18 — `run_task_18`
+
+- **Inputs**: `cells` (`product`, `supplier`, `btm_0`, `btm_cf`, `beta_hat`, `m0`), `study_config`; keyword `output_dir`, `task_7_output`, `task_1_output`, `paper_total_musd` (−155,800), `excluded_cells_effect_musd`, `fixed_alpha_closure_effect_musd`.
+- **Process**: computes the proportional response, imposes the conserving reallocation (halting on any T12 violation), and reports the residual against the paper's total in four attribution categories.
+- **Outputs**: `cells` (with `trade_effect_paper`), `residual_report` (with `context`), `conservation`, `upstream`, `artefacts` (`task_18_cell_results.csv`, `task_18_summary.json`).
+- **Transformation**: margin ratios and coefficients become response factors. Within each market of fixed expenditure $E_k=\sum_iM^0_{ik}$, these factors become share reallocations valued in USD millions.
+- **Research role**: implements Eqs. (16)–(17) under the partial-equilibrium closure that holds "expenditures, production, and other determinants of trade fixed".
+- **Equations**: with response factor $\rho_{ik}=(btm^{CF}_{ik}/btm^0_{ik})^{\hat\beta_k}$:
+
+$$
+\Delta Trade_{ik}=\rho_{ik}-1,\qquad s^{CF}_{ik}=\frac{s^0_{ik}\rho_{ik}}{\sum_{j}s^0_{jk}\rho_{jk}},\qquad TE^{\mathrm{cons}}_{ik}=E_k\left(s^{CF}_{ik}-s^0_{ik}\right),\qquad \left\lvert\sum_{i\in V_k}TE^{\mathrm{cons}}_{ik}\right\rvert\le10^{-10}.
+$$
+
+- **Implementation distinction**: the conserving reallocation is the implementation's primary deliverable. The paper's non-conserving $M^0(\rho-1)$, which it prints and which sums to about USD −155.8 billion, is retained only for reconciliation. The gap splits exactly into four parts: excluded cells, fixed-$\alpha$ closure, non-conserving variant, and other aggregation.
+
+### Task 19 — `run_task_19`
+
+- **Inputs**: `cells` (tariffs and benchmarks in both states, `beta_hat_k`, `exporter_iso3`, baseline values), `study_config` (T8, T9, T15 tolerances), `upstream_report`, `output_dir`.
+- **Process**: runs the Eq. (19) log decomposition, the multiplicative factorisation of the response and the attribution-share report. It verifies T8, T9 and T15 on the final frame, then writes the per-cell CSV and the summary JSON.
+- **Outputs**: `n_cells`, `n_markets`, `category_counts`, `category_trade_shares`, three maximum errors and their tolerances, upstream flags; frames `cells`, `markets`, `by_category`, `by_industry`, `by_exporter`.
+- **Transformation**: each cell's change in log margin is split into an own-tariff term and a benchmark term (the latter reported once per market). The response factor is split into two multiplicative factors.
+- **Research role**: implements Eq. (19): "The first component measures the direct change in the tariff applied to exporter $i$; the second captures the indirect adjustment in its relative market access through the tariffs faced by competing suppliers."
+- **Equations**:
+
+$$
+\Delta\ln BTM_{ik}=\underbrace{-\Delta\ln(1+\tau_{ik})}_{\mathrm{own}}+\underbrace{\Delta\ln(1+T_k)}_{\mathrm{benchmark}},\qquad \left(\frac{1+\tau^0_{ik}}{1+\tau^{CF}_{ik}}\right)^{\hat\beta_k}\left(\frac{1+T^{CF}_k}{1+T^0_k}\right)^{\hat\beta_k}=\left(\frac{BTM^{CF}_{ik}}{BTM^0_{ik}}\right)^{\hat\beta_k}.
+$$
+
+- **Implementation distinction**: the two factors multiply and are never added. Domestic cells have an own factor of exactly 1 (T15, $10^{-15}$). Any T8, T9 or T15 exceedance raises one `RuntimeError` naming every failure, and nothing is written. Valuation at $M^0$ (Eq. 17) is left to Task 18.
+
+### Task 20 — `run_task_20`
+
+- **Inputs**: `cell_frame`, `study_config` (`table1`, `verification_targets`), `output_dir`, `upstream_validation`.
+- **Process**: computes unweighted industry means and the percentage change in margin under two conventions, then verifies them against the seventeen Table 1 targets.
+- **Outputs**: `industry_means`, `delta_btm`, `verification`, `report_path`, `notes`, `eq19_warning`, `upstream`.
+- **Transformation**: cell margins and elasticities become per-industry means; the primary ratio-of-means convention is reported beside a mean-of-ratios convention.
+- **Research role**: implements Table 1, whose notes define "$\Delta BTM = (BTM_{SIM}/BTM_{CES} - 1) \times 100$". The text reports that "13 of the 17 reported industries exhibit an increase in the mean margin, whereas four exhibit a decrease".
+- **Equations**: for industry $g$ with $n_g$ cells:
+
+$$
+\bar\sigma_g=\frac1{n_g}\sum_{c\in g}\hat\sigma_c,\qquad BTM^{CES}_g=\frac1{n_g}\sum_{c\in g}BTM^{0}_c,\qquad BTM^{SIM}_g=\frac1{n_g}\sum_{c\in g}BTM^{CF}_c,\qquad \Delta BTM_g=\left(\frac{BTM^{SIM}_g}{BTM^{CES}_g}-1\right)\times100 .
+$$
+
+- **Implementation distinction**: comparison uses raw unrounded values; nothing is rounded to match. Under calibrated $\sigma$, the $\sigma$ targets hold by construction, so the margin comparisons are the substantive ones. A sign disagreement is a finding, and the report restates that Table 1 is not the Eq. (19) decomposition.
+
+### Task 21 — `run_task_21`
+
+- **Inputs**: `cells` (conserving and non-conserving effects), `exporter_table`, `study_config`; keyword `output_dir`, `task_18_output`, `task_1_output`.
+- **Process**: builds both Table 2 variants, builds Table 3, then reconciles the column sums and the zero-domestic count against the paper.
+- **Outputs**: `Table2_conserving`, `Table2_nonconserving`, `residual_per_industry`, `specific_cells_comparison`, `row_sum_check`, `table3`, `denominator_discrepancy`, `targets_comparison_pred`, `targets_comparison_obs`, `n_exporters`, `reconciliation`, the two upstream mappings, `artefacts`.
+- **Transformation**: cell effects are split by industry and origin into strictly positive gains and strictly negative losses (zeros enter neither), and by exporter into net percentage changes.
+- **Research role**: implements Tables 2 and 3. Table 3's note divides "by baseline predicted trade", whereas Eq. (17) scales observed baseline trade.
+- **Equations**: by industry $g$ and origin (international or domestic), then by exporter $i$:
+
+$$
+G_g=\sum_{c\in g:\ TE_c\gt0}TE_c,\qquad L_g=\sum_{c\in g:\ TE_c\lt0}TE_c,\qquad \mathrm{Net}_g=G_g+L_g;\qquad \%^{\mathrm{pred}}_i=\frac{\mathrm{Net}_i}{\widehat M^0_i}\times100,\qquad \%^{\mathrm{obs}}_i=\frac{\mathrm{Net}_i}{M^0_i}\times100 .
+$$
+
+- **Implementation distinction**: the four printed Table 2 cells are compared with the non-conserving variant, and Table 3's fifteen targets with both readings. The two denominators are flagged, never silently reconciled. The paper's −155,800 is a comparison constant, not a target.
+
+### Task 22 — `run_task_22`
+
+- **Inputs**: `study_config`, `output_dir`; keyword `upstream`, `artifacts` (`c_sj`, `limits`, `cells`, `derived`).
+- **Process**: Step 1 runs T1–T6 (Gower identities, weight conservation, CES limits); Step 2 runs T7–T12 (margin, attribution, factorisation, Jacobian, uniform shock, conservation); Step 3 runs T13–T16 (derived quantities). The sixteen entries are merged and written as text and JSON.
+- **Outputs**: `tests` (T1–T16: `verdict`, `deviation`, `tolerance`, `note`), `all_passed`, `report_path`, `upstream`, `counts`, `departures`, `all_passed_note`.
+- **Transformation**: artefacts become sixteen verdicts at the Task 3 tolerances. A step that raises records each of its tests as `fail`, with the exception named, and the run continues.
+- **Research role**: encodes the paper's algebra as executable assertions, including the claim that $\Delta\tau_{ik}=0\not\Rightarrow\Delta btm_{ik}=0$ (T11) and the spillover structure behind preference erosion and amplification.
+- **Equations**: T10 follows from T4 with $\alpha$ fixed:
+
+$$
+\frac{\partial\ln btm_{ik}}{\partial\ln(1+\tau_{jk})}=\omega_{jk}-\mathbb{1}[i=j],\qquad \sum_{j\in V_k}\frac{\partial\ln\widehat M_{ik}}{\partial\ln(1+\tau_{jk})}=\hat\beta_k\left(\sum_{j\in V_k}\omega_{jk}-1\right)=0\ \ (\pm10^{-12}).
+$$
+
+- **Implementation distinction**: `all_passed` requires all sixteen ids to be present and passed. T5 and T11 are listed as departures because their binding basis differs from the configured identity: T5 binds a Laplace-extraction statistic, since at $\sigma=1000$ the raw gap to $\min_i(1+\tau_i)$ cannot meet $10^{-6}$ with near-uniform weights.
+
+### Task 23 — `run_task_23`
+
+- **Inputs**: `product_panel`, `table1`, `table2`, `table3`, `composition_inputs`, `study_config` (`sign_pattern_tests`), `rounding_tolerance`, `output_dir`, `task_1_result`.
+- **Process**: computes three per-industry functionals and their signs, builds the cross-table coherence report, checks the paper's sign patterns, and reports per-table sample composition.
+- **Outputs**: `functionals`, `cross_table_coherence`, `table_composition`, `sign_patterns`, `sign_disagreement_rate`, `sign_disagreement_n_industries`, `findings`, `files`, `provenance`.
+- **Transformation**: one product-level panel becomes three industry aggregates whose signs may legitimately differ. Table 1 implements the first functional and Table 2 the third.
+- **Research role**: implements the paper's caveat: "The sign of an industry's aggregate trade effect need not coincide with the change in its industry-average bilateral tariff margin reported in Table 1."
+- **Equations**: for industry $g$:
+
+$$
+f^{(1)}_g=\frac{\overline{btm^{SIM}}_g}{\overline{btm^{CES}}_g}-1,\qquad f^{(2)}_g=\overline{\left(\frac{btm^{SIM}}{btm^{CES}}-1\right)}_g,\qquad f^{(3)}_g=\frac{\sum_{i\in g}M^0_{i}\left[(btm^{SIM}_i/btm^{CES}_i)^{\hat\beta_g}-1\right]}{\sum_{i\in g}M^0_{i}}.
+$$
+
+- **Implementation distinction**: the patterns checked are:
+  - Table 1: 13 positive and 4 negative;
+  - Table 2: eight zero-domestic industries, at the rounding tolerance;
+  - Table 3: positives China, India and Vietnam; Japan, Mexico and Germany strictly negative.
+
+  The configuration key is named `table2_domestic_nonzero_industries`, but it holds the zero count: the printed table has 8 zero and 9 non-zero domestic rows. A mismatch is a finding, never raised.
+
+### Task 24 — `run_task_24`
+
+- **Inputs**: `hazard_inputs` (`industry`, `sigma_bar`, `delta_btm_percent`, `reported_net_musd`, `baseline_trade_musd`; optional `product_level`, which selects Design B), `task1_output` (opaque), `output_dir`.
+- **Process**: computes the single-multiplier calibration hazard, tests the three reconciliations, and issues per-reconciliation and global verdicts. The hazard report is written as CSV.
+- **Outputs**: `task`, `study_id`, `steps_executed`, task-1 provenance flags, `output_dir`, `artefact`, `hazard_report_path`, `hazard`, `reconciliations`, `verdict`, `hazard_report`, `closing_reconciliation`, `global_verdict`, `carry_to_replication_note`, `parameters_adjusted` (always `False`), `provenance`.
+- **Transformation**: one industry's mean elasticity and mean margin change become an implied expansion. Its gap to the printed net is then classified as `closes`, `does_not_close` or `not_computable`.
+- **Research role**: confronts Table 1 with Table 2 for medical, precision and optical instruments. There, $\bar\sigma=64.33$ and $\Delta BTM=+7.88\%$, yet "modest net gains for foreign suppliers coexist with a much larger predicted contraction in domestic trade": foreign net is $1{,}162-515=647$, and the total net is −48,115.
+- **Equations**: under $\sigma=\beta+1$:
+
+$$
+\Delta\ln btm=\ln(1.0788)=0.07585,\qquad \Delta\ln M=(64.33-1)\times0.07585=4.8035,\qquad e^{4.8035}-1\approx120.94\ \ (\approx12{,}094\%).
+$$
+
+- **Implementation distinction**: the three reconciliations tested are product-level masking, a map that is not the identity, and offsetting signs within an industry. Under Design A, the first and third require Design B and are `not_computable`. No parameter is tuned to close the gap. The configuration's recorded 12,102% is a rounding of the 12,094% above.
+
+### Task 25 — `run_task_25`
+
+- **Inputs**: `study_config` (`P3_fixed_point`, T1–T3 tolerances), `fixture_panel` (frozen; `None` selects the absent real-data path, which raises), `scenario`, `design` (`"A"` single pass or `"B"` iterated), `upstream_outputs`, `output_dir`.
+- **Process**: validates once, builds the 22-row callable catalogue, then invokes every catalogue callable in dependency order, storing each result by content address:
+  - Chain A: coding matrix, Gower matrix (T1–T3), layout.
+  - Chain B: cleanse, harmonise, $V_k$, $\alpha$, benchmark, margin, PPML, $\sigma$ map and filters, fixed point.
+  - Tail: scenario, counterfactual benchmark and margin, trade effects, attribution, Tables 1–3, T4–T16, hazard.
+- **Outputs**: exactly `Chain_A_outputs`, `Chain_B_outputs` (its `deliverables` carry `btm_baseline`, `btm_counterfactual`, `delta_ln_btm`, `own_tariff_component`, `benchmark_component`, `trade_effect_musd`), `Tests`, `Hazard`, `DisclosureLedger`.
+- **Transformation**: one fixture panel, one scenario and one configuration become the paper's four consumable outputs per cell: position, change, attribution and reallocation.
+- **Research role**: the top-level end-to-end run of Section 3's sequence, "Tariff shock $\rightarrow$ Market access $\rightarrow$ Elasticity $\rightarrow$ Trade effect".
+- **Equations**: the composed chain and its closure checks:
+
+$$
+(\tau^0,\tau^{CF},M^0)\xrightarrow{(3)}T^s_k\xrightarrow{(4),(18)}BTM^s_{ik}\xrightarrow{(14)}\hat\beta_k\xrightarrow{(16),(17)}TE_{ik};\qquad \max\left\lvert\Delta\ln BTM-(\mathrm{own}+\mathrm{bench})\right\rvert\le10^{-12}.
+$$
+
+- **Implementation distinction**: on a single-period panel $\ln btm$ is collinear with the fixed effects. A rank-deficient, non-converged or extreme fit therefore falls back to $\beta_k=\sigma_k-1$, with the reason recorded. Design B halts at the iteration cap, and every catalogue callable must have been invoked.
+
+### Task 26 — `run_task_26`
+
+- **Inputs**: `study_config` (grid axes, Table 1–3 quantity keys), `orchestrator` (injected Chain B orchestrator), `output_dir`, `dependency_outputs`, `audit_fraction`.
+- **Process**: enumerates and runs the 576-cell grid over eight axes, then re-executes an evenly spaced audit subset. It summarises every declared quantity and writes the results and summary CSVs.
+- **Outputs**: `n_cells`, `all_pass`, `audit`, `cache_hit_rate`, `grid_results_path`, `summary_path`, `grid_results`, `sensitive_to_imputation`, `dependency_outputs`.
+- **Transformation**: undisclosed choices become a Cartesian grid. Each quantity's 576 values become a minimum, maximum, range and percentile rank of the all-primary cell. The eight axes are: $\alpha$ rule (G1), baseline year (G5), $\beta\to\sigma$ map (G3), filter threshold (G4), rule precedence (G10), estimation route (A versus B), $S$ membership (G9) and product level (G6).
+- **Research role**: answers the paper's own warning that results differ with "the definition of the policy experiment, the choice and aggregation of the tariff benchmark, the elasticity attached to the resulting measure of market access, or the equilibrium closure".
+- **Equations**: with $n$ grid values and the all-primary value $v^\ast$:
+
+$$
+\mathrm{range}=\max_c v_c-\min_c v_c,\qquad \mathrm{pos}=1+\#\lbrace c:v_c\lt v^\ast\rbrace,\qquad \mathrm{pct}=100\frac{\mathrm{pos}-1}{n-1},\qquad \mathrm{sensitive}\iff\mathrm{pct}\lt25\ \vee\ \mathrm{pct}\gt75 .
+$$
+
+- **Implementation distinction**: bounds are reported instead of a point estimate. A failing cell is recorded, not dropped. The audit requires exact equality on recomputation, and the all-primary cell must exist and be unique.
+
+### Task 27 — `run_task_27`
+
+- **Inputs**: `study_config`, `upstream` (dependency outputs keyed by task id), `reports` (note inputs), `inventory` (one checklist row per artefact), `deposit_dir`, `pin_dir`, `output_dir`.
+- **Process**:
+  1. Builds the checksummed deposit and `manifest.json`.
+  2. Re-audits it, aborting before any note if it fails.
+  3. Pins the environment (`environment_pin.txt`, `Dockerfile`, `regenerate_all.py`).
+  4. Writes `replication_note.md`.
+- **Outputs**: exactly `deposit`, `environment_pin`, `replication_note`, `upstream_consumed`.
+- **Transformation**: artefacts become a byte-reproducible deposit (canonical JSON, no timestamp), and the environment becomes a version-pinned container whose run id binds inputs and environment.
+- **Research role**: replaces the paper's "The coding table and the R-code that produces Figure 1 are available upon request" with a deposited, verifiable chain from frozen inputs to every reported figure. It also deposits the twelve deliverables the paper omits, such as $\hat\beta_k$ with standard errors, $\alpha_i$ and the conserving residual.
+- **Equations**: with $H$ = SHA-256:
+
+$$
+\mathrm{input\_hash}=H\left(\mathrm{sorted}\ \lbrace\mathrm{name}=\mathrm{checksum}\rbrace\right),\qquad \mathrm{run\_id}=\mathrm{run}\text{-}\mathrm{input\_hash}_{[0:12]}\text{-}H(\mathrm{environment\_pin})_{[0:12]}.
+$$
+
+- **Implementation distinction**: a missing file or digest mismatch aborts the run before the note is written. The base image must carry a verified, non-zero digest; the backend must be MKL or OpenBLAS and Python 3.11 or 3.12.
