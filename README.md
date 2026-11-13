@@ -311,8 +311,8 @@ The notebook works through the paper in eleven phases.
 The diagram below illustrates the Inputs, Processes and Outputs (IPOs) of the implemented approach:
 
 <div align="center">
-  <a href="https://github.com/chirindaopensource/from_tariff_changes_to_trade_effects/blob/main/from_tariff_changes_to_trade_effects_ipo_main_1.png">
-    <img src="https://raw.githubusercontent.com/chirindaopensource/from_tariff_changes_to_trade_effects/main/from_tariff_changes_to_trade_effects_ipo_main_1.png" alt="Inputs, processes and outputs of the tariff competitive-position pipeline" width="100%">
+  <a href="https://github.com/chirindaopensource/from_tariff_changes_to_trade_effects/blob/main/from_tariff_changes_to_trade_effects_ipo_main_4.png">
+    <img src="https://raw.githubusercontent.com/chirindaopensource/from_tariff_changes_to_trade_effects/main/from_tariff_changes_to_trade_effects_ipo_main_4.png" alt="Inputs, processes and outputs of the tariff competitive-position pipeline" width="100%">
   </a>
 </div>
 
