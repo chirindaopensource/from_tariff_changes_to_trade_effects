@@ -1,0 +1,109 @@
+# ============================================================================#
+#
+#  From Tariff Changes to Trade Effects: A Practical Framework for Empirical
+#  Trade Policy Analysis -- requirements.txt
+#
+#  This file pins the Python packages needed to run the notebook
+#  from_tariff_changes_to_trade_effects_draft.ipynb, the Python
+#  implementation of "From Tariff Changes to Trade Effects: A Practical
+#  Framework for Empirical Trade Policy Analysis" by Maria Cipollina and
+#  Luca De Benedictis (2026). The notebook delivers a schedule-level
+#  competitive-position audit of tariffs: for every supplier in every
+#  product market, including the domestic supplier, it measures competitive
+#  position relative to all actual rivals, decomposes any change in that
+#  position exactly into a direct own-tariff component and an indirect
+#  competitive-benchmark component, and predicts the associated
+#  partial-equilibrium trade reallocation under an explicitly declared
+#  closure.
+#
+#  Contents:
+#  • Core runtime: the only third-party packages the notebook's import cell
+#    imports (numpy, pandas, scipy), plus the three packages pandas itself
+#    requires, pinned so that the environment can be re-created exactly
+#  • Usage example: PyYAML (reads config.yaml) and Faker (synthetic data);
+#    the notebook itself imports neither
+#  • Notebook environment: Jupyter Notebook and the IPython kernel
+#
+#  Technical Notes:
+#  • Python: verified on CPython 3.13.9 (64-bit) only; other interpreter
+#    versions are untested. A requirements file cannot enforce the
+#    interpreter version, so create the environment with Python 3.13.
+#  • Every version below is the exact version of the verified environment
+#    (== pins). They are mutually compatible: pandas 2.3.3 requires
+#    numpy>=1.26.0 on Python>=3.12, and SciPy 1.16.3 requires
+#    numpy>=1.25.2,<2.6.
+#  • Standard-library modules imported by the notebook need no installation:
+#    __future__ (annotations), ast, copy, datetime, fractions, hashlib,
+#    importlib.util, itertools, json, logging, math, numbers, os, pathlib,
+#    platform, re, shutil, sys, tempfile, types and typing.
+#  • SciPy subpackages used: scipy.linalg (eigvals), scipy.spatial.distance
+#    (pdist), scipy.special (logsumexp) and scipy.stats (chi2, kendalltau,
+#    norm, spearmanr); all ship with the scipy wheel.
+#  • The regenerate_all.py script that Task 27 writes to disk imports
+#    argparse, hashlib, json, os, sys, pathlib, importlib.util and pandas;
+#    all are covered here.
+#  • No package calls a paid service: the notebook imports no LLM or HTTP
+#    client.
+#
+#  Install:
+#    python -m pip install -r requirements.txt
+#
+#  Paper Reference:
+#  Cipollina, M., & De Benedictis, L. (2026). From Tariff Changes to Trade
+#  Effects: A Practical Framework for Empirical Trade Policy Analysis.
+#  Prepared for the 15th AIEAA Annual Conference (Rome, Universitas
+#  Mercatorum). arXiv preprint arXiv:2610.36171.
+#  https://arxiv.org/abs/2610.36171
+#
+#  Author: CS Chirinda
+#  License: MIT
+#  Version: 1.0.0
+#
+# ============================================================================#
+
+# -----------------------------------------------------------------------------
+# Core runtime: imported by the notebook's "Import Essential Modules" cell
+# -----------------------------------------------------------------------------
+# Arrays, log-space CES aggregation, linear algebra (np.linalg) and the
+# seeded random generator used by the synthetic fixtures.
+numpy==2.3.5
+# Every tabular structure: panels, ledgers, tables 1-3 and test reports.
+pandas==2.3.3
+# scipy.linalg.eigvals (spectral radius, T14), scipy.spatial.distance.pdist
+# (layout repulsion), scipy.special.logsumexp (eq. 3 in log space) and
+# scipy.stats chi2 / kendalltau / norm / spearmanr (Wald tests, p-values,
+# order-preservation diagnostics).
+scipy==1.16.3
+
+# -----------------------------------------------------------------------------
+# Core runtime: dependencies that pandas 2.3.3 requires, pinned for exact
+# re-creation of the verified environment
+# -----------------------------------------------------------------------------
+# Date parsing used by pandas (pandas requires >=2.8.2).
+python-dateutil==2.9.0.post0
+# Time-zone database used by pandas (pandas requires >=2020.1).
+pytz==2025.2
+# IANA time-zone data used by pandas (pandas requires >=2022.7); Faker also
+# requires it on Windows.
+tzdata==2025.2
+
+# -----------------------------------------------------------------------------
+# Usage example only (usage_example.md); the notebook imports neither
+# -----------------------------------------------------------------------------
+# Reads config.yaml into the `config` dictionary with yaml.safe_load.
+PyYAML==6.0.3
+# Generates the free-text fields of the synthetic input structures.
+Faker==40.44.0
+
+# -----------------------------------------------------------------------------
+# Notebook environment
+# -----------------------------------------------------------------------------
+# Jupyter Notebook server and interface.
+notebook==7.4.5
+# The IPython kernel that executes the notebook's cells.
+ipykernel==6.31.0
+
+# -----------------------------------------------------------------------------
+# Optional development tool (uncomment to check PEP 8 at 79 columns)
+# -----------------------------------------------------------------------------
+# pycodestyle==2.12.1
