@@ -1,0 +1,1530 @@
+{
+  "_header": {
+    "title": "From Tariff Changes to Trade Effects: A Practical Framework for Empirical Trade Policy Analysis -- Study Configuration (study_config.json)",
+    "description": "The complete study configuration, STUDY_CONFIG, consumed by the end-to-end orchestrator run_task_25 and by every task-level callable of the Python reproduction of Cipollina and De Benedictis (2026). It is a value-for-value transcription of the revised and complete input specification (study_revised_inputs_20261109_222236.md), the notebook's single source of truth, and is equivalent to config.yaml: both load to the same mapping.",
+    "configuration_sections": [
+      "0 meta and scope",
+      "1 interpretive boundaries",
+      "2 raw input schemas (8 frames)",
+      "3 preprocessing",
+      "4 sample construction",
+      "5 tariff construction",
+      "6 node augmentation (V_k, DOM)",
+      "7 scenario construction (Feb 2026)",
+      "8 equation parameters (Eqs 1-19)",
+      "9 algorithm parameters (P1-P5)",
+      "10 network architecture parameters",
+      "11 estimation settings (PPML, HD FE)",
+      "12 aggregation and reporting",
+      "13 automated instrumentation",
+      "14 plot and figure parameters",
+      "15 replicator's imputation register",
+      "16 integrity, audit and tests T1-T16",
+      "17 verification targets"
+    ],
+    "provenance_tags": {
+      "[S]": "stated",
+      "[I]": "implied",
+      "[G]": "gap",
+      "[X]": "replicator-imposed",
+      "[UNSPECIFIED IN MANUSCRIPT]": "placeholder chosen by a declared rule; the rule is recorded so that the reproduction is auditable",
+      "where_recorded": "JSON has no comments; the per-key provenance tags and rules are carried as comments in config.yaml"
+    },
+    "conventions": [
+      "Python tuples are stored as JSON arrays; run_task_25 accepts lists or tuples.",
+      "Python None is stored as null (a declared gap or an absent design term).",
+      "Fractions in the specification (1/18, 2/18, 5/18) are stored as their float64 values.",
+      "Non-ASCII characters (em dashes) are stored as UTF-8, not escaped."
+    ],
+    "load": "import json; STUDY_CONFIG = json.load(open('study_config.json', encoding='utf-8'))['STUDY_CONFIG']",
+    "paper_reference": "Cipollina, M., & De Benedictis, L. (2026). From Tariff Changes to Trade Effects: A Practical Framework for Empirical Trade Policy Analysis. Prepared for the 15th AIEAA Annual Conference (Rome, Universitas Mercatorum). Submitted 26 October 2026. arXiv preprint arXiv:2610.36171. https://arxiv.org/abs/2610.36171",
+    "author": "CS Chirinda",
+    "license": "MIT",
+    "version": "1.0.0"
+  },
+  "STUDY_CONFIG": {
+    "meta": {
+      "study_id": "CIPOLLINA_DEBENEDICTIS_2026",
+      "short_title": "From Tariff Changes to Trade Effects",
+      "authors": [
+        "Cipollina, M.",
+        "De Benedictis, L."
+      ],
+      "venue": "15th AIEAA Annual Conference, Rome, Universitas Mercatorum",
+      "two_disjoint_chains": [
+        "Chain A: bibliometric (S1.1, Figure 1)",
+        "Chain B: econometric (S2-S4, Tables 1-3)"
+      ],
+      "chain_interface": "NONE",
+      "code_availability": "coding table and R-code available upon request",
+      "datasets_cited_in_references": 0,
+      "companion_paper_identifier": "Working Paper 8283474, arXiv (identifier format SSRN-shaped)"
+    },
+    "interpretive_boundaries": {
+      "equilibrium_scope": "partial equilibrium",
+      "results_are_not_welfare": true,
+      "results_are_not_ge": true,
+      "results_are_not_output_employment": true,
+      "what_results_are": "model-based reallocations of trade flows",
+      "conditional_on": [
+        "estimated trade responses",
+        "maintained assumptions about other determinants"
+      ],
+      "broader_evaluation_requires": [
+        "expenditures",
+        "prices",
+        "production",
+        "multilateral resistance"
+      ],
+      "exercise_purpose": "illustrate mechanics, not rank winners and losers",
+      "asymmetry_claim": "protectionism is not liberalization reversed",
+      "conservation_note": "the paper's Table 2 sums to roughly -155.8 bn USD, which is incompatible with a closed exercise; a conserving reproduction must report the residual against excluded cells as a finding",
+      "fixed_point_stationarity_finding": "under eq. (14), d(beta_hat_k)/d(sigma_k) = 0 and every sigma_k is a fixed point; the iteration of eq. (U2) is stationary at its initial condition. This is the deepest analytical finding a reproduction must surface"
+    },
+    "raw_input_schemas": {
+      "df_itpde_bilateral": {
+        "columns": {
+          "report_iso3": "string[3]",
+          "partner_iso3": "string[3]",
+          "product_code": "string",
+          "nomen_code": "string",
+          "year": "int16",
+          "flow_value": "float64",
+          "flow_flag": "string[1]",
+          "reporter_notes": "string",
+          "value_units_declared": "string"
+        }
+      },
+      "df_itpde_domestic": {
+        "columns": {
+          "report_iso3": "string[3]",
+          "counterparty": "string",
+          "product_code": "string",
+          "nomen_code": "string",
+          "year": "int16",
+          "flow_value": "float64",
+          "construction_method": "string"
+        }
+      },
+      "df_wits_trains": {
+        "columns": {
+          "reporter_iso3": "string[3]",
+          "partner_iso3": "string[3]|group_code",
+          "product_code": "string",
+          "nomen_code": "string",
+          "year": "int16",
+          "tariff_type": "category{MFN,PREF,APPLIED}",
+          "duty_form": "category{AD_VALOREM,SPECIFIC,COMPOUND,PROHIBITIVE}",
+          "rate_value": "float64",
+          "rate_unit": "string",
+          "ave_source": "string",
+          "pref_scheme": "string",
+          "quota_flag": "bool",
+          "n_lines": "int16",
+          "valid_from": "datetime64[ns]",
+          "valid_to": "datetime64[ns]"
+        }
+      },
+      "df_tariff_tracker": {
+        "columns": {
+          "row_id": "int16",
+          "country": "string",
+          "iso3": "string",
+          "measure": "string",
+          "legal_basis": "string",
+          "goods_scope": "string",
+          "hs_codes": "list[string]|None",
+          "rate_increment": "float64",
+          "rate_basis": "string{additional,total,minimum}",
+          "effective_date": "datetime64[ns]",
+          "expiry_date": "datetime64[ns]|None",
+          "country_specific": "bool",
+          "selected_partner_set_flag": "int8"
+        }
+      },
+      "df_study_corpus": {
+        "columns": {
+          "study_id": "string[3]",
+          "authors": "string",
+          "year": "Int16(nullable)",
+          "title": "string(nullable)",
+          "venue": "string(nullable)",
+          "abstract_txt": "string(nullable)",
+          "access_date": "datetime64[ns]",
+          "identifier": "string",
+          "merged_into": "string|None",
+          "resolution_note": "string"
+        }
+      },
+      "df_affiliation_matrix": {
+        "columns": {
+          "study_id": "string[3]",
+          "element_id": "string[2]",
+          "c_sj": "float64",
+          "justification": "string|None",
+          "char_span": "tuple[int,int]|None",
+          "coder_id": "string",
+          "kappa_row": "float64"
+        }
+      },
+      "df_hs_isic_concordance": {
+        "columns": {
+          "hs_code": "string",
+          "hs_level": "int8",
+          "nomen_code": "string",
+          "isic_rev3": "string",
+          "allocation_weight": "float64",
+          "allocation_rule": "string",
+          "unmapped_flag": "int8"
+        }
+      },
+      "df_calibrated_elasticities": {
+        "columns": {
+          "isic_2digit": "string",
+          "industry_label": "string",
+          "sigma_mean_reported": "float64",
+          "beta_k_derived": "float64",
+          "beta_se": "float64",
+          "beta_pval": "float64",
+          "n_products_in_industry": "int16",
+          "excluded_by_sigma_eq_2": "int8"
+        }
+      }
+    },
+    "preprocessing": {
+      "industry_concordance": "ISIC Rev.3, two-digit",
+      "hs_revision": "HS2017",
+      "product_level": "HS6",
+      "product_level_principle": "most disaggregated level at which tariff treatment differs across exporters and products",
+      "record_unmapped_codes": true,
+      "record_multi_industry_allocation": true,
+      "baseline_year_for_margins": 2017,
+      "estimation_window": [
+        2016,
+        2021
+      ],
+      "missing_tariff_rule": "drop_supplier_from_V_k",
+      "group_code_broadcast_rule": "apply_to_partners_without_partner_specific_MFN",
+      "ave_convention": "WITS_AVE_where_available",
+      "prohibitive_duty_ceiling": 1.0,
+      "quota_handling": "in_quota_rate_retained",
+      "applied_vs_statutory_distinction": "applied_protection",
+      "trade_weighted_average_warning": true,
+      "distinguish_nan_from_zero": true
+    },
+    "sample_construction": {
+      "filter_rule": "beta_hat_k > 0 AND significant",
+      "filter_significance_threshold": 0.05,
+      "filter_direction_of_bias": "raises the reported mean elasticity",
+      "filter_population_effect": "redefines the sample for every subsequent average and sum",
+      "excluded_industries_rule": "sigma_k = 2",
+      "industries_remaining_after_filter": 17,
+      "excluded_trade_share_reported": true,
+      "pre_filter_distribution_reported": true
+    },
+    "tariff_construction": {
+      "rate_representation_for_differencing": "tariff rate tau",
+      "factor_representation_for_ratios": "tariff factor (1 + tau)",
+      "baseline_construction_rule": "APPLIED_direct",
+      "preference_utilisation_rule": "embedded_in_APPLIED",
+      "ten_pp_log_shift": "Delta_ln(1+tau) varies 0.0408-0.0953 across base rates",
+      "scenario_decimals_vs_factors": "increment added to tau, not to (1+tau)"
+    },
+    "node_augmentation": {
+      "V_k_construction": "{ i : M_ikt > 0 } union { 'DOM' }",
+      "domestic_tariff_rate": 0.0,
+      "domestic_included_in_benchmark": true,
+      "domestic_tariff_invariant_across_states": true,
+      "filter_aggregate_partner_codes": [
+        "WLD",
+        "EUN",
+        "ROW",
+        "ALL"
+      ],
+      "vegan_endogeneity_recording": "report |V_k| and its trade share, and how |V_k| varies with the applied MFN rate",
+      "domestic_nonzero_assertion": "the domestic node must respond in every market where any foreign margin moves; industries reporting identically zero domestic effects in Table 2 (8 of 17) require explanation"
+    },
+    "scenario_construction": {
+      "increment_selected_partners": 0.1,
+      "increment_bolivia": 0.15,
+      "increment_steel_aluminium": 0.25,
+      "increment_motor_vehicles_parts": 0.25,
+      "increment_copper": 0.5,
+      "sectoral_buckets": [
+        "steel and aluminium",
+        "motor vehicles and parts",
+        "copper"
+      ],
+      "sectoral_scope": "across exporters",
+      "partner_increment_scope": "partner-selective",
+      "rate_basis": "additional",
+      "sectoral_hs_code_lists": {
+        "steel_and_aluminium": {
+          "HS4_range": [
+            "7208",
+            "7229"
+          ],
+          "HS4_add": [
+            "7601",
+            "7604",
+            "7606",
+            "7608"
+          ],
+          "rule": "HS6 under these HS4 heads"
+        },
+        "motor_vehicles_parts": {
+          "HS4_range": [
+            "8701",
+            "8705"
+          ],
+          "HS4_add": [
+            "8708"
+          ],
+          "rule": "HS6 under these HS4 heads"
+        },
+        "copper": {
+          "HS4_range": [
+            "7401",
+            "7419"
+          ],
+          "HS4_add": [],
+          "rule": "HS6 under these HS4 heads"
+        }
+      },
+      "selected_partners_set_P": {
+        "primary": [
+          "MEX",
+          "CAN",
+          "JPN",
+          "DEU",
+          "KOR",
+          "GBR",
+          "FRA",
+          "ITA",
+          "BRA",
+          "IRQ",
+          "CHE",
+          "SAU"
+        ],
+        "alternatives": [
+          "all_major_partners_except_China_india",
+          "explicit_tracker_coverage_lines"
+        ],
+        "excluded_by_primary": [
+          "CHN",
+          "IND",
+          "VNM"
+        ],
+        "rationale": "reconciles the China +17.0 and India +25.6 results with the amplification mechanism; the prior evaluation flagged the original config placing China inside S as contradicting its own test (item E2)"
+      },
+      "rule_precedence": "maximum",
+      "admissibility_ceiling": 0.5,
+      "domestic_node_increment": 0.0
+    },
+    "equation_parameters": {
+      "eq01_02_tariff_change": {
+        "time_index_convention": [
+          "0",
+          "1"
+        ],
+        "null_case_mechanism": "MFN increase with preferential rate unchanged",
+        "insufficiency_claim": "d tau_ik does not characterise the change in market access"
+      },
+      "eq03_ces_reference": {
+        "alpha_symbol": "alpha_i",
+        "alpha_normalisation": 1.0,
+        "alpha_lower_bound": 0.0,
+        "alpha_construction_rule": "alpha_i is proportional to s_ik * (1 + tau_ik)^(sigma_k - 1)",
+        "alpha_self_consistency_test": true,
+        "sigma_symbol": "sigma_k",
+        "sigma_lower_bound_exclusive": 1.0,
+        "aggregator_exponent": "1 / (1 - sigma_k)",
+        "inner_exponent": "1 - sigma_k",
+        "limit_sigma_to_infinity": "min_i (1 + tau_ik)",
+        "limit_sigma_to_one": "Product_i (1 + tau_ik)^alpha_i",
+        "limit_verification_sigma_inf": 1000.0,
+        "limit_verification_sigma_one": 1.0001,
+        "limit_verification_tolerance": 1e-06,
+        "sigma_industry_means_table1": {
+          "ISIC_11_Extraction_crude_petroleum": 22.78,
+          "ISIC_15_Food_products": 41.9,
+          "ISIC_17_Textiles": 13.23,
+          "ISIC_19_Leather_luggage_footwear": 5.63,
+          "ISIC_20_Wood_and_cork": 4.09,
+          "ISIC_23_Coke_refined_petroleum": 2.78,
+          "ISIC_24_Chemicals": 57.86,
+          "ISIC_25_Rubber_and_plastics": 46.64,
+          "ISIC_26_Other_non_metallic_mineral": 7.23,
+          "ISIC_28_Fabricated_metal": 30.49,
+          "ISIC_29_Machinery_equipment_nec": 11.99,
+          "ISIC_31_Electrical_machinery": 4.91,
+          "ISIC_32_Radio_TV_communication": 41.26,
+          "ISIC_33_Medical_precision_optical": 64.33,
+          "ISIC_34_Motor_vehicles_trailers": 17.18,
+          "ISIC_35_Other_transport_equipment": 16.65,
+          "ISIC_36_Furniture_manufacturing_nec": 10.03
+        },
+        "sigma_excluded_conventional_value": 2.0,
+        "n_industries_reported": 17
+      },
+      "eq04_margin": {
+        "numerator": "(1 + T_k)",
+        "denominator": "(1 + tau_ik)",
+        "unit_of_measure": "dimensionless ratio, centred at unity",
+        "identity_condition": "btm = 1 iff tau_ik = T_k",
+        "interpretation_above_one": "relatively favourable treatment",
+        "interpretation_below_one": "relative disadvantage",
+        "observed_range_table1": [
+          0.924,
+          1.095
+        ]
+      },
+      "eq05_non_equivalence": {
+        "relation_type": "non-implication",
+        "premise": "d tau_ik = 0",
+        "conclusion_denied": "d btm_ik = 0",
+        "beneficiaries_under_protection": "preferential exporters",
+        "losers_under_liberalization": "preferential exporters"
+      },
+      "eq06_13_two_experiments": {
+        "exporter_A_role": "preferential supplier; own tariff unchanged in both",
+        "exporter_B_role": "non-preferential supplier; own tariff is the shock",
+        "experiment_L_perturbation": "tau_B^1 < tau_B^0, tau_A^1 = tau_A^0",
+        "experiment_L_effect": "T_k^1 < T_k^0; btm_A^1 < btm_A^0",
+        "experiment_P_perturbation": "tau_B^1 > tau_B^0, tau_A^1 = tau_A^0",
+        "experiment_P_effect": "T_k^1 > T_k^0; btm_A^1 > btm_A^0",
+        "ceteris_paribus_clause": "holding other elements of the benchmark constant",
+        "named_mechanism_liberalization": "preference erosion",
+        "named_mechanism_protection": "preference amplification",
+        "direction_liberalization_chain": "tau_B down -> T_k down -> btm_A down",
+        "direction_protection_chain": "tau_B_MFN up -> T_k up -> btm_A up",
+        "bilateral_measure_blind_spot": "records no policy change for amplified-preference exporters"
+      },
+      "eq14_estimation": {
+        "estimator": "PPML",
+        "dependent_variable": "M_ikt",
+        "regressor": "ln(btm_ikt)",
+        "coefficient_symbol": "beta_k",
+        "fe_exporter_time": "gamma_it",
+        "fe_product_time": "delta_kt",
+        "fe_importer_time": null,
+        "fe_bilateral": null,
+        "zero_flows_retained": true,
+        "design_choice": "Design_B_over_identified",
+        "design_A_model": "exp[ -beta_k ln(1+tau_ikt) + gamma_it + delta_kt ]",
+        "design_B_model": "exp[ beta_own_k ln(1+tau_ikt) + beta_bm_k ln(1+T_kt) + gamma_it + delta_k + delta_t + theta ln E_kt ]",
+        "design_B_hypothesis": "H0: beta_bm_k = -beta_own_k (Wald, chi^2(1))",
+        "identification_collinearity": "ln(1+T_kt) exactly collinear with delta_kt",
+        "equivalent_restricted_model": "exp[ -beta_k ln(1+tau_ikt) + gamma_it + delta'_kt ]",
+        "beta_to_sigma_map_candidates": [
+          "sigma = beta + 1",
+          "sigma = beta"
+        ],
+        "beta_to_sigma_map_primary": "sigma = beta + 1",
+        "pe_disclaimer": "single-importer truncation is not a full structural-gravity model",
+        "resistance_absorption": "P_kt and E_kt absorbed by delta_kt; Pi_ikt and Y_ikt partly absorbed by gamma_it",
+        "resistance_failure_at_counterfactual": "absorption valid for estimation; fails under counterfactual because absorbed terms are functions of the policy"
+      },
+      "eq15_18_counterfactual_margin": {
+        "state_set_eq15": [
+          0,
+          1
+        ],
+        "state_set_eq18": [
+          0,
+          "CF"
+        ],
+        "recompute_benchmark_from_complete_schedule": true,
+        "bilateral_only_counterfactual_prohibited": true,
+        "third_state_labelling_table1": [
+          "BTM_CES",
+          "BTM_SIM"
+        ]
+      },
+      "eq19_decomposition": {
+        "decomposition_exactness": "EXACT",
+        "own_tariff_component": "-Delta ln(1 + tau_ikt)",
+        "benchmark_component": "Delta ln(1 + T_kt)",
+        "domestic_own_component_identically_zero": true,
+        "benchmark_component_never_reported": true,
+        "cross_reference_in_table1_notes": "Equation (19)",
+        "spillover_weight": "omega_ik = alpha_i (1+tau_ik)^(1-sigma_k) / (1+T_k)^(1-sigma_k)",
+        "spillover_weight_conservation": "sum_i omega_ik = 1",
+        "sign_own": "d ln btm_ik / d ln(1+tau_ik) = omega_ik - 1 <= 0",
+        "sign_cross": "d ln btm_ik / d ln(1+tau_jk) = omega_jk >= 0",
+        "uniform_shock_invariance": "all foreign margins fall by a common factor when a uniform foreign shock is applied; domestic unchanged",
+        "multiplicative_factorisation": "1 + DeltaTrade = [(1+tau^0)/(1+tau^CF)]^beta * [(1+T^CF)/(1+T^0)]^beta",
+        "own_share_reported": true,
+        "benchmark_share_reported": true
+      },
+      "eq16_proportional_response": {
+        "closed_form": "(btm_CF / btm_0)^beta_hat - 1",
+        "fixed_effects_held_fixed": [
+          "gamma_it",
+          "delta_kt"
+        ],
+        "verification_tolerance": 1e-10
+      },
+      "eq17_valuation": {
+        "scaler": "M^0_ik",
+        "units": "millions of US dollars",
+        "closed_form_full": "M^0_ik * [ own_factor * benchmark_factor - 1 ]",
+        "own_multiplier": "[(1+tau^0_ik)/(1+tau^CF_ik)]^beta_hat_k",
+        "benchmark_multiplier": "[(1+T^CF_k)/(1+T^0_k)]^beta_hat_k",
+        "multipliers_structurally_identical": true,
+        "domestic_own_multiplier": 1.0,
+        "denominator_choice": "observed_baseline",
+        "conserving_reallocation_imposed": true,
+        "residual_reported": true
+      }
+    },
+    "algorithm_parameters": {
+      "P1_literature_space": {
+        "P1_corpus_size": 17,
+        "P1_element_count": 9,
+        "P1_coding_levels": [
+          0.0,
+          0.5,
+          1.0
+        ],
+        "P1_coding_input_restriction": "abstract only",
+        "P1_excluded_elements": [
+          "tariff change as source of variation",
+          "product-level trade data",
+          "US as importing market"
+        ],
+        "P1_gower_denominator": 9,
+        "P1_gower_grid_resolution": 0.05555555555555555,
+        "P1_distance_target_nearest": 0.11,
+        "P1_distance_target_fugazza": 0.28,
+        "P1_distance_target_others": 0.33,
+        "P1_element_radius_R": 5.5,
+        "P1_element_polar_angles_deg": {
+          "E1": 90,
+          "E2": 50,
+          "E3": 10,
+          "E4": 330,
+          "E5": 290,
+          "E6": 250,
+          "E7": 210,
+          "E8": 170,
+          "E9": 130
+        },
+        "P1_barycentre_weights": "c_sj",
+        "P1_repulsion_term": {
+          "kernel": "iterative symmetric displacement",
+          "max_displacement": 0.15,
+          "n_sweeps": 50
+        },
+        "P1_order_preservation_test": "Kendall tau >= 0.95 with Spearman rho reported",
+        "P1_zero_claim_node_rule": "place at centroid of circle, marked unclassifiable",
+        "P1_single_claim_ray_diagnostic": true,
+        "P1_edge_rendering_rule": "solid = 1, dashed = 0.5",
+        "P1_edges_rendered_in_source": 18,
+        "P1_edges_possible": 153,
+        "P1_merge_rule": "methodological papers with one design merged",
+        "P1_merge_rule_contradicted_by_figure": true,
+        "P1_unresolved_citations": [
+          "Hertel & Mix (2026)",
+          "Nicita (2019)",
+          "Wang & Hannan (2023)"
+        ],
+        "P1_anomalous_citation": "Dang, Krishna & Zhao (2003 in refs, 2026 in figure)",
+        "P1_unused_legend_categories": [
+          "GE models (cyan)",
+          "Elasticities (magenta)",
+          "Market access (yellow)"
+        ],
+        "P1_inter_coder_kappa_minimum": 0.8,
+        "P1_self_count_claim": "five at full strength vs maximum four elsewhere",
+        "P1_self_count_contradiction": "figure renders 3 solid + 2 dashed"
+      },
+      "P2_four_step_framework": {
+        "steps": [
+          "define the policy experiment",
+          "select the benchmark",
+          "estimate the trade elasticity",
+          "counterfactual evaluation"
+        ],
+        "compressed_schematic": "Tariff shock -> Market access -> Elasticity -> Trade effect",
+        "benchmark_menu": [
+          "Delta tau_ik",
+          "preference margin vs MFN",
+          "competitor-based average",
+          "CES-consistent btm_ikt"
+        ],
+        "benchmark_non_interchangeability": true,
+        "measurement_estimation_non_separability": true,
+        "early_aggregation_prohibited": true,
+        "definition_bias": "error from choice of reference tariff",
+        "aggregation_bias": "error from collapsing heterogeneous supplier treatments"
+      },
+      "P3_fixed_point": {
+        "init_benchmark": "tau_MFN",
+        "update_map_order": [
+          "btm",
+          "beta_hat",
+          "sigma_hat",
+          "T_CES",
+          "btm"
+        ],
+        "update_map_form": null,
+        "stopping_rule": "until convergence, subject to existence and stability",
+        "convergence_tolerance": 1e-08,
+        "max_iterations": 500,
+        "norm_for_convergence": "max_k |sigma_k^(r+1) - sigma_k^(r)|",
+        "existence_check": "report coefficient map range at the fixed point",
+        "stability_check": "spectral radius rho of the numerical Jacobian of F; require rho < 1",
+        "documented_as_executed": "single_pass_under_Design_A",
+        "structural_finding": "under Design A, d beta_hat / d sigma = 0; every sigma is a fixed point; convergence is vacuous"
+      },
+      "P4_counterfactual": {
+        "permitted_closures": [
+          "partial equilibrium",
+          "general equilibrium"
+        ],
+        "closure_axes": [
+          "expenditures",
+          "output",
+          "factory-gate prices",
+          "multilateral resistance"
+        ],
+        "pe_ge_non_interchangeability": true,
+        "recompute_benchmark_first": true
+      },
+      "P5_empirical_pipeline": {
+        "data_sources": [
+          "ITPDE (bilateral + domestic)",
+          "WITS-TRAINS (applied + MFN)"
+        ],
+        "panel_window": [
+          2016,
+          2021
+        ],
+        "scenario_source": "Atlantic Council Trump Tariff Tracker",
+        "scenario_access_date": "May 2026",
+        "scenario_date": "February 2026",
+        "filter_rule": "beta_hat_k > 0 AND significant",
+        "filter_significance_threshold": 0.05,
+        "excluded_industries": "sigma_k = 2"
+      }
+    },
+    "network_architecture_parameters": {
+      "machine_learning_architectures": 0,
+      "network_objects_discussed": 5,
+      "network_architectures_constructed": 3,
+      "NA1_literature_affiliation": {
+        "mode_S": [
+          "studies",
+          17
+        ],
+        "mode_E": [
+          "elements",
+          9
+        ],
+        "bipartite": true,
+        "edge_weight_set": [
+          0.0,
+          0.5,
+          1.0
+        ],
+        "distance_metric": "Gower (1971)",
+        "embedding": "claim-weighted barycentre",
+        "output": [
+          "Figure 1",
+          "Gower matrix",
+          "0.11 / 0.28 / >= 0.33"
+        ],
+        "interface_to_econometric_chain": "NONE"
+      },
+      "NA2_ces_benchmark_network": {
+        "node_set": "{foreign exporters with M > 0} union {DOM}",
+        "domestic_tariff": 0.0,
+        "edge_attributes": [
+          "alpha_i",
+          "(1+tau_ikt)"
+        ],
+        "induced_supplier_supplier_edges": "complete graph, strength governed by sigma_k",
+        "weight_matrix_row_stochastic": true,
+        "weight_matrix_form": "omega_ik = alpha_i (1+tau_ik)^(1-sigma_k) / (1+T_k)^(1-sigma_k)",
+        "weight_matrix_conservation": "sum_i omega_ik = 1",
+        "aggregation_operator": "PowMean_{1-sigma_k} over i with weights alpha",
+        "key_parameter": "sigma_k",
+        "identification_issue": "benchmark component absorbed by delta_kt"
+      },
+      "NA3_gravity_network": {
+        "node_set": "countries as exporters and importers",
+        "edges": "directed, one per ordered pair",
+        "edge_weight": "M_ikt",
+        "node_potentials": "multilateral resistance terms",
+        "implemented_truncation": "single importer",
+        "estimator": "PPML",
+        "removed_by_truncation": [
+          "importer-time FE",
+          "inward MR",
+          "outward MR",
+          "third-country market clearing",
+          "expenditure/output/price adjustment"
+        ]
+      },
+      "NA4_preference_network": {
+        "asserted_structure": "graph on country pairs with a preferential schedule per edge",
+        "constructed": false,
+        "element_code": "E9"
+      },
+      "NA5_production_network": {
+        "asserted_structure": "directed input-output linkages across sectors and countries",
+        "constructed": false,
+        "element_code": "E6",
+        "consequence": "downstream incidence of sectoral tariffs outside the model"
+      }
+    },
+    "estimation_settings": {
+      "loss_objective": "PPML pseudo-likelihood (Poisson deviance)",
+      "optimizer": "IRLS / Newton-type",
+      "fe_absorption_method": "alternating projections for two-way HD FE",
+      "convergence_tolerance": 1e-08,
+      "max_iterations": 1000,
+      "separation_rule": "detect and report; drop separating cells",
+      "weights": "unweighted",
+      "clustering_dimension": [
+        "exporter",
+        "product_time"
+      ],
+      "small_cluster_correction": "applied",
+      "bootstrap_replications": null,
+      "parameter_estimates_reported_in_paper": 0
+    },
+    "aggregation_reporting_scope": {
+      "table1": {
+        "change_formula": "(BTM_SIM / BTM_CES - 1) * 100",
+        "functional": "ratio of industry-level averages",
+        "sign_pattern": {
+          "positive": 13,
+          "negative": 4
+        },
+        "negative_industries": [
+          "crude petroleum (-1.11)",
+          "fabricated metals (-3.74)",
+          "motor vehicles (-3.03)",
+          "wood (-5.91)"
+        ],
+        "decimals": {
+          "margin": 3,
+          "sigma": 2,
+          "percent": 2
+        },
+        "guard_not_a_decomposition": "Table 1 is NOT an explicit decomposition of eq. (19)"
+      },
+      "table2": {
+        "gains_def": "sum of TradeEffect_ik over TradeEffect_ik > 0",
+        "losses_def": "sum of TradeEffect_ik over TradeEffect_ik < 0",
+        "net_formula": "Gains + Losses",
+        "split": [
+          "international",
+          "domestic"
+        ],
+        "units": "millions of US dollars",
+        "rounding_tolerance": 1,
+        "rounding_discrepancies": [
+          "food 2,834 vs 2,835",
+          "medical -48,116 vs -48,115",
+          "rubber -3,184 vs -3,185"
+        ],
+        "domestic_nonzero_industries": 8,
+        "column_sum_check": "must be zero under closure; paper's own sum is ~-155.8 bn"
+      },
+      "table3": {
+        "net_percent_formula": "(Gains + Losses) / Baseline * 100",
+        "denominator": "baseline_predicted_trade",
+        "selection_rule": "baseline predicted trade",
+        "n_exporters": 15,
+        "positive_exporters": [
+          "China +17.0",
+          "India +25.6",
+          "Vietnam +1.4"
+        ],
+        "large_negative": [
+          "Japan -37.2",
+          "Germany -29.5",
+          "Mexico -26.8",
+          "UK -26.5",
+          "South Korea -24.6"
+        ],
+        "published_values_reference": {
+          "Canada": [
+            119252,
+            1692,
+            -22620,
+            -17.5
+          ],
+          "Mexico": [
+            83738,
+            5630,
+            -28070,
+            -26.8
+          ],
+          "China": [
+            61888,
+            16851,
+            -6316,
+            17.0
+          ],
+          "Japan": [
+            41257,
+            698,
+            -16029,
+            -37.2
+          ],
+          "Germany": [
+            28777,
+            704,
+            -9203,
+            -29.5
+          ],
+          "South Korea": [
+            16344,
+            939,
+            -4962,
+            -24.6
+          ],
+          "United Kingdom": [
+            14583,
+            377,
+            -4234,
+            -26.5
+          ],
+          "Saudi Arabia": [
+            14383,
+            30,
+            -1474,
+            -10.0
+          ],
+          "France": [
+            13046,
+            251,
+            -2145,
+            -14.5
+          ],
+          "Vietnam": [
+            12727,
+            604,
+            -427,
+            1.4
+          ],
+          "Italy": [
+            12652,
+            735,
+            -3238,
+            -19.8
+          ],
+          "India": [
+            8912,
+            4063,
+            -1778,
+            25.6
+          ],
+          "Brazil": [
+            7850,
+            165,
+            -760,
+            -7.6
+          ],
+          "Iraq": [
+            7252,
+            0,
+            -728,
+            -10.0
+          ],
+          "Switzerland": [
+            6616,
+            153,
+            -1640,
+            -22.5
+          ]
+        }
+      },
+      "cross_table": {
+        "three_functionals": [
+          "ratio of means (Table 1)",
+          "mean of ratios",
+          "weighted sum of nonlinear transforms (Table 2)"
+        ],
+        "sign_coincidence_not_required": true,
+        "samples_may_differ_across_tables": true
+      }
+    },
+    "automated_instrumentation": {
+      "present_in_paper": false,
+      "permitted_use_only": "coding abstracts into the nine-element ordinal scheme",
+      "prohibited_uses": [
+        "generating beta_hat",
+        "imputing alpha_i",
+        "generating tariff codes without human verification",
+        "adjudicating table mismatches"
+      ],
+      "llm_provider": "Anthropic",
+      "llm_model_name": "claude-sonnet-4-5",
+      "llm_api_key_env_var": "ANTHROPIC_API_KEY",
+      "llm_settings": {
+        "temperature": 0.0,
+        "top_p": 1.0,
+        "max_tokens": 1200,
+        "single_turn": true,
+        "tools_enabled": false,
+        "retrieval_enabled": false,
+        "structured_output": true,
+        "refuse_and_flag_on_ambiguity": true,
+        "blind_to_answer_key": true,
+        "passes_per_abstract": 1,
+        "human_adjudication_of_partial_codes": true
+      },
+      "system_prompt": "You are coding one research ABSTRACT against a fixed nine-element codebook.\nYou will be given the abstract and the operational definitions of\nthe nine elements.\n\nReturn a JSON object with exactly nine keys E1..E9.\nEach value must be one of 0, 0.5, 1, or \"FLAG\".\n\nUse 1 only if the abstract explicitly claims the element as\ndefined. Use 0.5 only if the claim is partial or implicit under\nthe definition's partial-claim clause. Use 0 if the definition's\nabsence clause applies. Use \"FLAG\" only if the abstract is\ngenuinely ambiguous between two values; in that case state both\ncandidates in the 'diagnostic' field.\n\nYou will also be given, for each element, the exact verbatim\ndefinitions for the 1, 0.5, and 0 cases. Apply them literally.\nDo NOT reward a topic for being mentioned; a claim requires\nthat the abstract assert it. Do NOT infer from authors, journal,\nyear, or field. Do NOT use outside knowledge. Do NOT speculate\nabout the paper's body beyond what the abstract states.",
+      "user_prompt_template": "ELEMENT DEFINITIONS (from the codebook; apply literally)\n--------------------------------------------------------\n{element_definitions_verbatim}\n\nEXCLUDED ELEMENTS (do not code these)\n-------------------------------------\n{excluded_elements_verbatim}\n\nABSTRACT (verbatim; the only permitted input)\n----------------------------------------------\n{abstract_text}\n\nReturn the nine-field JSON object described in the system message.\nFor every non-zero or FLAG code, include a 'justification' field\ncontaining a verbatim substring of the abstract that warrants it.",
+      "validation_prompt_template": "You are auditing a coding decision against the codebook.\nYou are given one element's three-level definition and the\nassigned code together with its claimed evidence span.\n\nAnswer only: (a) is the evidence span literally present in the\nabstract; and (b) does the assigned code CORRECTLY APPLY the\nthree-level rule to that span — including, where the assigned\ncode is 0.5, whether the 0.5 clause applies rather than the 1 or\n0 clause.\n\nReply with JSON:\n{\"span_present\": true|false,\n \"code_correct_for_span\": true|false,\n \"correct_code\": 0|0.5|1|\"FLAG\",\n \"reason\": \"<one sentence>\"}\n\nELEMENT DEFINITION (all three levels):\n{element_definition_full}\nASSIGNED CODE: {code}\nCLAIMED EVIDENCE: {evidence_span}\nABSTRACT: {abstract_text}"
+    },
+    "plot_construction_parameters": {
+      "figure_1": {
+        "tikz_options": "[scale=0.85, every node/.style={transform shape}]",
+        "radius_R": 5.5,
+        "boundary_circle": "dashed, gray!30",
+        "colors": {
+          "reference_node": "red",
+          "strand_A": "orange!80!black",
+          "strand_B": "blue!80!black",
+          "strand_C": "teal!80!black"
+        },
+        "legend_categories_declared": [
+          "Price incidence",
+          "Product-level diversion",
+          "Global reallocation",
+          "GE models",
+          "Elasticities",
+          "Market access"
+        ],
+        "legend_categories_unused": [
+          "GE models",
+          "Elasticities",
+          "Market access"
+        ]
+      },
+      "figure_2": {
+        "anchor_levels": {
+          "Tk0": 4.5,
+          "Tk1": 3.8,
+          "tauA0": 2.5,
+          "tauB0": 3.5,
+          "tauB1": 1.8
+        }
+      },
+      "figure_3": {
+        "anchor_levels": {
+          "Tk0": 3.8,
+          "Tk1": 4.8,
+          "tauA0": 1.8,
+          "tauB0": 3.2,
+          "tauB1": 4.5
+        }
+      },
+      "table_construction": {
+        "package": "booktabs",
+        "font": "small",
+        "note_env": "parbox with footnotesize textit"
+      }
+    },
+    "replicator_imputation_register": {
+      "G1_alpha_rule": {
+        "primary": "alpha_i is proportional to s_ik * (1 + tau_ik)^(sigma_k - 1), normalised to sum to 1",
+        "rationale": "the only rule that reproduces observed shares identically after inversion; verified analytically and numerically",
+        "alternatives": [
+          "uniform (1/|V_k|)",
+          "import shares, foreign only"
+        ],
+        "acceptance_test": "predicted shares equal observed shares to 1e-12 for every (i, k)"
+      },
+      "G2_beta_k": {
+        "primary": "sigma_bar_k - 1 (derived from Table 1, col. 2)",
+        "rationale": "the CES/Armington reading under a tariff-factor regressor; the map beta = sigma - 1 is the natural one; alternatives sigma = beta (which is admissibility-equivalent only if the regressor is a factor-ratio)",
+        "alternatives": [
+          "re-estimate by Design B",
+          "sigma = beta"
+        ],
+        "note": "the paper never prints beta_hat; only sigma_bar_k appears in Table 1 col. 2; the derivation is a calibration, not an identification"
+      },
+      "G3_beta_to_sigma_map": {
+        "candidates": [
+          "sigma = beta + 1",
+          "sigma = beta"
+        ],
+        "selection": "choose map reproducing Table 1 col. 2 to 2 dp"
+      },
+      "G4_significance_threshold": {
+        "primary": 0.05,
+        "grid": [
+          0.01,
+          0.05,
+          0.1
+        ]
+      },
+      "G5_baseline_year_and_window": {
+        "baseline_year_for_margins": 2017,
+        "estimation_window": [
+          2016,
+          2021
+        ],
+        "alternatives_baseline_year": [
+          2021,
+          "2016-2021 mean"
+        ]
+      },
+      "G6_product_level": {
+        "primary": "HS6",
+        "alternatives": [
+          "HS8",
+          "HS10"
+        ],
+        "test": "verify tariff varies across i within k at the chosen level; if it does not, a coarser level is required",
+        "open_question": "at what level is V_k defined, and hence the CES benchmark computed — HS6, or ISIC 2-digit? The two give different network topologies and different margins; the choice must be declared"
+      },
+      "G7_ave_convention": {
+        "primary": "WITS-supplied AVEs where available",
+        "fallback": "unit-value basis, with source recorded",
+        "prohibitive_ceiling": 1.0,
+        "record": "affected cells and trade share"
+      },
+      "G8_repulsion_term": {
+        "primary": "iterative symmetric displacement below declared threshold",
+        "max_displacement": 0.15,
+        "n_sweeps": 50,
+        "invariant": "Kendall tau >= 0.95 over all pairs, with Spearman rho reported"
+      },
+      "G9_selected_partners_set_P": {
+        "primary": [
+          "MEX",
+          "CAN",
+          "JPN",
+          "DEU",
+          "KOR",
+          "GBR",
+          "FRA",
+          "ITA",
+          "BRA",
+          "IRQ",
+          "CHE",
+          "SAU"
+        ],
+        "test": "must reproduce China +17.0 percent, India +25.6 percent",
+        "note": "the prior config placed China IN S and thereby contradicted its own test; corrected (item E2)"
+      },
+      "G10_rule_precedence": {
+        "candidates": [
+          "additive",
+          "max"
+        ],
+        "primary": "max",
+        "report": "both; note which matches Table 2 magnitudes"
+      },
+      "G11_clustering_dimension": {
+        "primary": [
+          "exporter",
+          "product_time"
+        ],
+        "alternatives": [
+          "product_time only",
+          "exporter only"
+        ]
+      },
+      "G12_conserving_reallocation": {
+        "primary": "impose sum_i TradeEffect_ik = 0 within V_k",
+        "residual_reporting": "report against excluded cells; the paper's printed sum is approximately -155.8 bn"
+      }
+    },
+    "integrity_and_audit": {
+      "algebraic_tests": {
+        "T1_gower_self": {
+          "identity": "D_ss = 0 for all s",
+          "tol": "exact"
+        },
+        "T2_gower_symmetry": {
+          "identity": "D_ss' = D_s's for all s,s'",
+          "tol": "exact"
+        },
+        "T3_gower_grid": {
+          "identity": "18 * D_ss' in Z",
+          "tol": "exact"
+        },
+        "T4_weight_conservation": {
+          "identity": "sum_i omega_ik = 1",
+          "tol": 1e-12
+        },
+        "T5_ces_limit_inf": {
+          "identity": "sigma -> inf: 1+T_k -> min_i (1+tau_i)",
+          "tol": 1e-06
+        },
+        "T6_ces_limit_one": {
+          "identity": "sigma -> 1: 1+T_k -> prod_i (1+tau_i)^alpha_i",
+          "tol": 1e-06
+        },
+        "T7_margin_definition": {
+          "identity": "btm_ik recomputed from 1+T_k",
+          "tol": 1e-15
+        },
+        "T8_attribution": {
+          "identity": "-Delta_ln(1+tau) + Delta_ln(1+T) = Delta_ln btm",
+          "tol": 1e-15
+        },
+        "T9_multiplicative_factorisation": {
+          "identity": "own_factor * bench_factor = btm_CF / btm_0",
+          "tol": 1e-14
+        },
+        "T10_jacobian_zero_row_sum": {
+          "identity": "sum_j d ln M_i / d ln(1+tau_j) = 0 over V_k",
+          "tol": 1e-12
+        },
+        "T11_uniform_foreign_shock": {
+          "identity": "all foreign margins fall by a common factor; domestic unchanged",
+          "tol": 1e-12
+        },
+        "T12_conserving_reallocation": {
+          "identity": "sum_i TradeEffect_ik = 0 over V_k",
+          "tol": 1e-10
+        },
+        "T13_alpha_self_consistency": {
+          "identity": "predicted shares equal observed shares",
+          "tol": 1e-12
+        },
+        "T14_fixed_point_map": {
+          "identity": "||F(sigma) - sigma|| < tol AND spectral_radius < 1",
+          "tol": 1e-10
+        },
+        "T15_domestic_own_factor_unity": {
+          "identity": "own_multiplier for DOM = 1.0",
+          "tol": 1e-15
+        },
+        "T16_table1_arithmetic": {
+          "identity": "DeltaBTM = (SIM/CES - 1) * 100",
+          "tol": 0.01
+        }
+      },
+      "sign_pattern_tests": {
+        "table1_industry_margins": {
+          "positive": 13,
+          "negative": 4
+        },
+        "table2_domestic_nonzero_industries": 8,
+        "table3_positives": [
+          "China",
+          "India",
+          "Vietnam"
+        ],
+        "table3_large_negatives": [
+          "Japan",
+          "Mexico",
+          "Germany"
+        ]
+      },
+      "calibration_hazard_reconciliations": {
+        "industry": "Medical, precision and optical instruments",
+        "delta_btm_percent": 7.88,
+        "sigma": 64.33,
+        "implied_multiplier_if_identity": 63.33,
+        "implied_delta_ln_M": 4.8033,
+        "implied_percent_expansion": 12102.0,
+        "reconciliations_to_test": [
+          "industry-mean sigma masks per-product variation",
+          "the beta-to-sigma map is not the identity (i.e., sigma = beta is correct, not sigma = beta + 1)",
+          "Table 2 aggregation is over product-level effects with offsetting signs within the industry"
+        ],
+        "verdict_test": "which of the three reconciles the +647 foreign net with the +7.88 percent margin"
+      },
+      "three_sequential_calibration_targets": [
+        "sigma_bar_k vector (Table 1 col. 2) — isolates the elasticity pipeline",
+        "BTM levels (Table 1 cols. 3-4, 3 dp) — isolates alpha construction and baseline year",
+        "dollar effects (Tables 2-3) — isolates beta_hat, S membership, sectoral codes, precedence"
+      ],
+      "sensitivity_grid_axes": [
+        "alpha rule (G1)",
+        "baseline year (G5)",
+        "beta-to-sigma map (G3)",
+        "filter threshold (G4)",
+        "rule precedence (G10)",
+        "estimation route (Design A vs B)",
+        "S membership (G9)",
+        "product level (G6)"
+      ],
+      "deliverables_absent_from_paper": [
+        "beta_hat_k with SEs and p-values",
+        "Delta_ln(1+T_k) by product and industry",
+        "alpha_i construction and values",
+        "the beta-to-sigma map with selecting derivation",
+        "filter counts and excluded trade share",
+        "P3 convergence diagnostics",
+        "per-table sample composition",
+        "full sensitivity grid",
+        "the algebraic tests T1-T16",
+        "resolution of three missing citations and the Dang date",
+        "attribution table with own and benchmark components as separate columns",
+        "conserving reallocation and its residual"
+      ]
+    },
+    "verification_targets": {
+      "table1_sigma": {
+        "ISIC_11": {
+          "target": 22.78,
+          "tol": 0.01
+        },
+        "ISIC_15": {
+          "target": 41.9,
+          "tol": 0.01
+        },
+        "ISIC_17": {
+          "target": 13.23,
+          "tol": 0.01
+        },
+        "ISIC_19": {
+          "target": 5.63,
+          "tol": 0.01
+        },
+        "ISIC_20": {
+          "target": 4.09,
+          "tol": 0.01
+        },
+        "ISIC_23": {
+          "target": 2.78,
+          "tol": 0.01
+        },
+        "ISIC_24": {
+          "target": 57.86,
+          "tol": 0.01
+        },
+        "ISIC_25": {
+          "target": 46.64,
+          "tol": 0.01
+        },
+        "ISIC_26": {
+          "target": 7.23,
+          "tol": 0.01
+        },
+        "ISIC_28": {
+          "target": 30.49,
+          "tol": 0.01
+        },
+        "ISIC_29": {
+          "target": 11.99,
+          "tol": 0.01
+        },
+        "ISIC_31": {
+          "target": 4.91,
+          "tol": 0.01
+        },
+        "ISIC_32": {
+          "target": 41.26,
+          "tol": 0.01
+        },
+        "ISIC_33": {
+          "target": 64.33,
+          "tol": 0.01
+        },
+        "ISIC_34": {
+          "target": 17.18,
+          "tol": 0.01
+        },
+        "ISIC_35": {
+          "target": 16.65,
+          "tol": 0.01
+        },
+        "ISIC_36": {
+          "target": 10.03,
+          "tol": 0.01
+        }
+      },
+      "table1_btm_ces": {
+        "ISIC_11": {
+          "target": 0.995,
+          "tol": 0.001
+        },
+        "ISIC_15": {
+          "target": 0.982,
+          "tol": 0.001
+        },
+        "ISIC_17": {
+          "target": 0.993,
+          "tol": 0.001
+        },
+        "ISIC_19": {
+          "target": 1.038,
+          "tol": 0.001
+        },
+        "ISIC_20": {
+          "target": 0.982,
+          "tol": 0.001
+        },
+        "ISIC_23": {
+          "target": 0.981,
+          "tol": 0.001
+        },
+        "ISIC_24": {
+          "target": 0.994,
+          "tol": 0.001
+        },
+        "ISIC_25": {
+          "target": 0.998,
+          "tol": 0.001
+        },
+        "ISIC_26": {
+          "target": 0.99,
+          "tol": 0.001
+        },
+        "ISIC_28": {
+          "target": 0.99,
+          "tol": 0.001
+        },
+        "ISIC_29": {
+          "target": 0.989,
+          "tol": 0.001
+        },
+        "ISIC_31": {
+          "target": 0.999,
+          "tol": 0.001
+        },
+        "ISIC_32": {
+          "target": 0.984,
+          "tol": 0.001
+        },
+        "ISIC_33": {
+          "target": 1.015,
+          "tol": 0.001
+        },
+        "ISIC_34": {
+          "target": 0.99,
+          "tol": 0.001
+        },
+        "ISIC_35": {
+          "target": 0.97,
+          "tol": 0.001
+        },
+        "ISIC_36": {
+          "target": 0.993,
+          "tol": 0.001
+        }
+      },
+      "table1_btm_sim": {
+        "ISIC_11": {
+          "target": 0.984,
+          "tol": 0.001
+        },
+        "ISIC_15": {
+          "target": 1.022,
+          "tol": 0.001
+        },
+        "ISIC_17": {
+          "target": 1.008,
+          "tol": 0.001
+        },
+        "ISIC_19": {
+          "target": 1.066,
+          "tol": 0.001
+        },
+        "ISIC_20": {
+          "target": 0.924,
+          "tol": 0.001
+        },
+        "ISIC_23": {
+          "target": 1.002,
+          "tol": 0.001
+        },
+        "ISIC_24": {
+          "target": 1.018,
+          "tol": 0.001
+        },
+        "ISIC_25": {
+          "target": 1.029,
+          "tol": 0.001
+        },
+        "ISIC_26": {
+          "target": 1.0,
+          "tol": 0.001
+        },
+        "ISIC_28": {
+          "target": 0.953,
+          "tol": 0.001
+        },
+        "ISIC_29": {
+          "target": 1.006,
+          "tol": 0.001
+        },
+        "ISIC_31": {
+          "target": 1.027,
+          "tol": 0.001
+        },
+        "ISIC_32": {
+          "target": 1.018,
+          "tol": 0.001
+        },
+        "ISIC_33": {
+          "target": 1.095,
+          "tol": 0.001
+        },
+        "ISIC_34": {
+          "target": 0.96,
+          "tol": 0.001
+        },
+        "ISIC_35": {
+          "target": 0.981,
+          "tol": 0.001
+        },
+        "ISIC_36": {
+          "target": 1.006,
+          "tol": 0.001
+        }
+      },
+      "table1_delta_btm_percent": {
+        "sign_pattern": {
+          "positive": 13,
+          "negative": 4
+        },
+        "specific_targets": {
+          "ISIC_11": {
+            "target": -1.11,
+            "tol": 0.01
+          },
+          "ISIC_15": {
+            "target": 4.07,
+            "tol": 0.01
+          },
+          "ISIC_19": {
+            "target": 2.7,
+            "tol": 0.01
+          },
+          "ISIC_20": {
+            "target": -5.91,
+            "tol": 0.01
+          },
+          "ISIC_28": {
+            "target": -3.74,
+            "tol": 0.01
+          },
+          "ISIC_32": {
+            "target": 3.46,
+            "tol": 0.01
+          },
+          "ISIC_33": {
+            "target": 7.88,
+            "tol": 0.01
+          },
+          "ISIC_34": {
+            "target": -3.03,
+            "tol": 0.01
+          }
+        }
+      },
+      "table2_arithmetic": {
+        "row_sum_check": "every row's net = integer sum of four components",
+        "column_sum_check": "column sum of net effects = 0 under closure",
+        "observed_column_sum": -155800.0
+      },
+      "table2_specific_cells": {
+        "motor_vehicles_net": {
+          "target": -74455,
+          "tol": 1
+        },
+        "medical_net": {
+          "target": -48115,
+          "tol": 1
+        },
+        "textiles_international_gain": {
+          "target": 27874,
+          "tol": 1
+        },
+        "furniture_domestic_gain": {
+          "target": 12766,
+          "tol": 1
+        }
+      },
+      "table3_net_percent": {
+        "Canada": {
+          "target": -17.5,
+          "tol": 0.1
+        },
+        "Mexico": {
+          "target": -26.8,
+          "tol": 0.1
+        },
+        "China": {
+          "target": 17.0,
+          "tol": 0.1
+        },
+        "Japan": {
+          "target": -37.2,
+          "tol": 0.1
+        },
+        "Germany": {
+          "target": -29.5,
+          "tol": 0.1
+        },
+        "South Korea": {
+          "target": -24.6,
+          "tol": 0.1
+        },
+        "United Kingdom": {
+          "target": -26.5,
+          "tol": 0.1
+        },
+        "Saudi Arabia": {
+          "target": -10.0,
+          "tol": 0.1
+        },
+        "France": {
+          "target": -14.5,
+          "tol": 0.1
+        },
+        "Vietnam": {
+          "target": 1.4,
+          "tol": 0.1
+        },
+        "Italy": {
+          "target": -19.8,
+          "tol": 0.1
+        },
+        "India": {
+          "target": 25.6,
+          "tol": 0.1
+        },
+        "Brazil": {
+          "target": -7.6,
+          "tol": 0.1
+        },
+        "Iraq": {
+          "target": -10.0,
+          "tol": 0.1
+        },
+        "Switzerland": {
+          "target": -22.5,
+          "tol": 0.1
+        }
+      },
+      "gower_distances": {
+        "merged_cs_vs_reference": {
+          "target": 0.1111111111111111,
+          "tol": "half-unit"
+        },
+        "fugazza_vs_reference": {
+          "target": 0.2777777777777778,
+          "tol": "half-unit"
+        },
+        "all_others_vs_reference": {
+          "target": ">= 6/18",
+          "tol": "half-unit"
+        }
+      },
+      "figure_self_count": {
+        "reference_full_claims_stated": 5,
+        "reference_full_claims_drawn": 3,
+        "unused_legend_categories": 3,
+        "drawn_edges": 18,
+        "possible_edges": 153
+      },
+      "algebraic_identities_all_pass": true
+    }
+  }
+}

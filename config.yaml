@@ -1,0 +1,1298 @@
+# ============================================================================#
+#
+#  From Tariff Changes to Trade Effects: A Practical Framework for Empirical
+#  Trade Policy Analysis -- Study Configuration (config.yaml)
+#
+#  This file is the complete study configuration, STUDY_CONFIG, consumed by
+#  the end-to-end orchestrator run_task_25 and by every task-level callable
+#  of the Python reproduction of "From Tariff Changes to Trade Effects: A
+#  Practical Framework for Empirical Trade Policy Analysis" by Maria
+#  Cipollina and Luca De Benedictis (2026). It is a value-for-value
+#  transcription of the revised and complete input specification
+#  (study_revised_inputs_20261109_222236.md), which the notebook declares as
+#  the single source of truth: every section, key and value is present, and
+#  every provenance tag of the specification is carried as a comment. Loaded
+#  with yaml.safe_load, it reproduces STUDY_CONFIG exactly, with Python tuples
+#  read back as lists (run_task_25 accepts either).
+#
+#  Configuration Sections:
+#  • 0  meta and scope                  • 9  algorithm parameters (P1-P5)
+#  • 1  interpretive boundaries         • 10 network architecture parameters
+#  • 2  raw input schemas (8 frames)    • 11 estimation settings (PPML, HD FE)
+#  • 3  preprocessing                   • 12 aggregation and reporting
+#  • 4  sample construction             • 13 automated instrumentation
+#  • 5  tariff construction             • 14 plot and figure parameters
+#  • 6  node augmentation (V_k, DOM)    • 15 replicator's imputation register
+#  • 7  scenario construction (Feb 2026)• 16 integrity, audit and tests T1-T16
+#  • 8  equation parameters (Eqs 1-19)  • 17 verification targets
+#
+#  Technical Implementation Features:
+#  • Provenance tags: [S] = stated; [I] = implied; [G] = gap;
+#    [X] = replicator-imposed. "[UNSPECIFIED IN MANUSCRIPT]" marks a value
+#    chosen by a declared rule; the rule is recorded so that the reproduction
+#    is auditable.
+#  • All strings are double-quoted; the three LLM prompt templates are YAML
+#    literal blocks (|-), preserved character for character.
+#  • Exponent floats carry a decimal point (for example 1.0e-08) so that
+#    YAML 1.1 parsers, including PyYAML, read them as floats, not strings.
+#  • Fractions in the specification (1/18, 2/18, 5/18) are stored as their
+#    float64 values (0.0555..., 0.111..., 0.277...).
+#  • null stands for Python None (a declared gap or an absent design term).
+#  • Load:  import yaml
+#           with open("config.yaml", encoding="utf-8") as f:
+#               STUDY_CONFIG = yaml.safe_load(f)
+#
+#  Paper Reference:
+#  Cipollina, M., & De Benedictis, L. (2026). From Tariff Changes to Trade
+#  Effects: A Practical Framework for Empirical Trade Policy Analysis.
+#  Prepared for the 15th AIEAA Annual Conference (Rome, Universitas
+#  Mercatorum). Submitted 26 October 2026. arXiv preprint arXiv:2610.36171.
+#  https://arxiv.org/abs/2610.36171
+#
+#  Author: CS Chirinda
+#  License: MIT
+#  Version: 1.0.0
+#
+# ============================================================================#
+#
+# ==============================================================================
+# STUDY CONFIGURATION: Cipollina & De Benedictis (2026)
+# "From Tariff Changes to Trade Effects: A Practical Framework for Empirical
+#  Trade Policy Analysis"
+# Revised and Complete Input Specification.
+#
+# Provenance: [S] = stated; [I] = implied; [G] = gap; [X] = replicator-imposed.
+# Every value marked "[UNSPECIFIED IN MANUSCRIPT]" is a placeholder chosen by a
+# declared rule; the rule is recorded so that the reproduction is auditable.
+# ==============================================================================
+
+# --------------------------------------------------------------------------
+# 0. META AND SCOPE
+# --------------------------------------------------------------------------
+meta:
+  study_id: "CIPOLLINA_DEBENEDICTIS_2026"  # [S]
+  short_title: "From Tariff Changes to Trade Effects"  # [S]
+  authors: ["Cipollina, M.", "De Benedictis, L."]  # [S]
+  venue: "15th AIEAA Annual Conference, Rome, Universitas Mercatorum"  # [S]
+  two_disjoint_chains: ["Chain A: bibliometric (S1.1, Figure 1)", "Chain B: econometric (S2-S4, Tables 1-3)"]  # [S]
+  chain_interface: "NONE"  # [I]
+  code_availability: "coding table and R-code available upon request"  # [S]
+  datasets_cited_in_references: 0  # [S]
+  companion_paper_identifier: "Working Paper 8283474, arXiv (identifier format SSRN-shaped)"  # [S]
+
+# --------------------------------------------------------------------------
+# 1. INTERPRETIVE BOUNDARIES (the four prohibitions)
+# --------------------------------------------------------------------------
+interpretive_boundaries:
+  equilibrium_scope: "partial equilibrium"  # [S]
+  results_are_not_welfare: true  # [S]
+  results_are_not_ge: true  # [S]
+  results_are_not_output_employment: true  # [S]
+  what_results_are: "model-based reallocations of trade flows"  # [S]
+  conditional_on: ["estimated trade responses", "maintained assumptions about other determinants"]  # [S]
+  broader_evaluation_requires: ["expenditures", "prices", "production", "multilateral resistance"]  # [S]
+  exercise_purpose: "illustrate mechanics, not rank winners and losers"  # [S]
+  asymmetry_claim: "protectionism is not liberalization reversed"  # [S]
+  conservation_note: "the paper's Table 2 sums to roughly -155.8 bn USD, which is incompatible with a closed exercise; a conserving reproduction must report the residual against excluded cells as a finding"  # [X]
+  fixed_point_stationarity_finding: "under eq. (14), d(beta_hat_k)/d(sigma_k) = 0 and every sigma_k is a fixed point; the iteration of eq. (U2) is stationary at its initial condition. This is the deepest analytical finding a reproduction must surface"  # [I]
+
+# --------------------------------------------------------------------------
+# 2. RAW INPUT SCHEMAS (authoritative column names; must match DataFrames)
+# --------------------------------------------------------------------------
+raw_input_schemas:
+  df_itpde_bilateral:
+    columns:
+      report_iso3: "string[3]"  # [S]
+      partner_iso3: "string[3]"  # [I]
+      product_code: "string"  # [I]
+      nomen_code: "string"  # [G]
+      year: "int16"  # [S]
+      flow_value: "float64"  # [I]
+      flow_flag: "string[1]"  # [I]
+      reporter_notes: "string"  # [I]
+      value_units_declared: "string"  # [X]
+  df_itpde_domestic:
+    columns:
+      report_iso3: "string[3]"  # [S]
+      counterparty: "string"  # [G]
+      product_code: "string"  # [I]
+      nomen_code: "string"  # [G]
+      year: "int16"  # [S]
+      flow_value: "float64"  # [I]
+      construction_method: "string"  # [G]
+  df_wits_trains:
+    columns:
+      reporter_iso3: "string[3]"  # [S]
+      partner_iso3: "string[3]|group_code"  # [I]
+      product_code: "string"  # [I]
+      nomen_code: "string"  # [G]
+      year: "int16"  # [I]
+      tariff_type: "category{MFN,PREF,APPLIED}"  # [S]
+      duty_form: "category{AD_VALOREM,SPECIFIC,COMPOUND,PROHIBITIVE}"  # [G]
+      rate_value: "float64"  # [I]
+      rate_unit: "string"  # [I]
+      ave_source: "string"  # [G]
+      pref_scheme: "string"  # [I]
+      quota_flag: "bool"  # [I]
+      n_lines: "int16"  # [I]
+      valid_from: "datetime64[ns]"  # [G]
+      valid_to: "datetime64[ns]"  # [G]
+  df_tariff_tracker:
+    columns:
+      row_id: "int16"  # [I]
+      country: "string"  # [S]
+      iso3: "string"  # [G]
+      measure: "string"  # [X]
+      legal_basis: "string"  # [G]
+      goods_scope: "string"  # [S]
+      hs_codes: "list[string]|None"  # [G]
+      rate_increment: "float64"  # [S]
+      rate_basis: "string{additional,total,minimum}"  # [G]
+      effective_date: "datetime64[ns]"  # [S]
+      expiry_date: "datetime64[ns]|None"  # [G]
+      country_specific: "bool"  # [S]
+      selected_partner_set_flag: "int8"  # [X]
+  df_study_corpus:
+    columns:
+      study_id: "string[3]"  # [I]
+      authors: "string"  # [S]
+      year: "Int16(nullable)"  # [S]
+      title: "string(nullable)"  # [S]
+      venue: "string(nullable)"  # [S]
+      abstract_txt: "string(nullable)"  # [S]
+      access_date: "datetime64[ns]"  # [G]
+      identifier: "string"  # [G]
+      merged_into: "string|None"  # [S]
+      resolution_note: "string"  # [X]
+  df_affiliation_matrix:
+    columns:
+      study_id: "string[3]"  # [I]
+      element_id: "string[2]"  # [I]
+      c_sj: "float64"  # [S]
+      justification: "string|None"  # [G]
+      char_span: "tuple[int,int]|None"  # [G]
+      coder_id: "string"  # [G]
+      kappa_row: "float64"  # [X]
+  df_hs_isic_concordance:
+    columns:
+      hs_code: "string"  # [S]
+      hs_level: "int8"  # [G]
+      nomen_code: "string"  # [G]
+      isic_rev3: "string"  # [S]
+      allocation_weight: "float64"  # [X]
+      allocation_rule: "string"  # [X]
+      unmapped_flag: "int8"  # [X]
+  df_calibrated_elasticities:
+    columns:
+      isic_2digit: "string"  # [S]
+      industry_label: "string"  # [S]
+      sigma_mean_reported: "float64"  # [S]
+      beta_k_derived: "float64"  # [X]
+      beta_se: "float64"  # [G]
+      beta_pval: "float64"  # [G]
+      n_products_in_industry: "int16"  # [G]
+      excluded_by_sigma_eq_2: "int8"  # [S]
+
+# --------------------------------------------------------------------------
+# 3. PREPROCESSING
+# --------------------------------------------------------------------------
+preprocessing:
+  industry_concordance: "ISIC Rev.3, two-digit"  # [S]
+  # [UNSPECIFIED IN MANUSCRIPT] a guess, chosen because HS2017 spans the 2017-2021 bulk of the
+  # panel and is modal in ITPDE snapshots over the window; alternatives HS2012 and HS2022 carried
+  # as a sensitivity axis
+  hs_revision: "HS2017"
+  # [UNSPECIFIED IN MANUSCRIPT] primary = HS6, on granularity grounds; alternatives HS8 and HS10
+  # carried; the choice changes |V_k| and therefore every omega_ik
+  product_level: "HS6"
+  product_level_principle: "most disaggregated level at which tariff treatment differs across exporters and products"  # [S]
+  record_unmapped_codes: true  # [X]
+  record_multi_industry_allocation: true  # [X]
+  # [UNSPECIFIED IN MANUSCRIPT] a guess, chosen as the last pre-2018 wave year in the panel;
+  # alternatives 2021 and the 2016-2021 arithmetic mean
+  baseline_year_for_margins: 2017
+  estimation_window: [2016, 2021]  # [S]
+  # [UNSPECIFIED IN MANUSCRIPT] default drops the cell from V_k rather than imputing MFN, on the
+  # grounds that the MFN rate may not reflect any scheme for which the supplier is eligible;
+  # alternative = impute MFN, carried as a sensitivity axis; the affected trade share must be
+  # reported under all choices
+  missing_tariff_rule: "drop_supplier_from_V_k"
+  # [UNSPECIFIED IN MANUSCRIPT] the broadcast semantics for WLD / EUN / ROW / ALL as erga omnes
+  # proxies; the group code is stripped from V_k after broadcast
+  group_code_broadcast_rule: "apply_to_partners_without_partner_specific_MFN"
+  # [UNSPECIFIED IN MANUSCRIPT] WITS-supplied AVE primary; unit-value basis fallback; the affected
+  # share is reported
+  ave_convention: "WITS_AVE_where_available"
+  # [UNSPECIFIED IN MANUSCRIPT] cap the ad valorem rate at 100 percent so (1+tau) remains finite
+  # inside the power mean; alternative = drop the cell from V_k, with the affected trade share
+  # reported
+  prohibitive_duty_ceiling: 1.0
+  # [UNSPECIFIED IN MANUSCRIPT] declaration of the TRQ convention; the alternative, dropping TRQ
+  # cells, is carried as a sensitivity axis
+  quota_handling: "in_quota_rate_retained"
+  applied_vs_statutory_distinction: "applied_protection"  # [S]
+  trade_weighted_average_warning: true  # [S]
+  distinguish_nan_from_zero: true  # [I]
+
+# --------------------------------------------------------------------------
+# 4. SAMPLE CONSTRUCTION
+# --------------------------------------------------------------------------
+sample_construction:
+  filter_rule: "beta_hat_k > 0 AND significant"  # [S]
+  # [UNSPECIFIED IN MANUSCRIPT] conventional 5 percent level, on standard inference grounds; grid
+  # {0.01, 0.05, 0.10} carried
+  filter_significance_threshold: 0.05
+  filter_direction_of_bias: "raises the reported mean elasticity"  # [I]
+  filter_population_effect: "redefines the sample for every subsequent average and sum"  # [I]
+  excluded_industries_rule: "sigma_k = 2"  # [S]
+  industries_remaining_after_filter: 17  # [S]
+  excluded_trade_share_reported: true  # [X] resolves H10 of the prior register
+  # [X] quartiles, min, max of beta_hat_k before the filter
+  pre_filter_distribution_reported: true
+
+# --------------------------------------------------------------------------
+# 5. TARIFF CONSTRUCTION
+# --------------------------------------------------------------------------
+tariff_construction:
+  rate_representation_for_differencing: "tariff rate tau"  # [I]
+  factor_representation_for_ratios: "tariff factor (1 + tau)"  # [S]/[I]
+  # [UNSPECIFIED IN MANUSCRIPT] uses WITS-TRAINS tariff_type=APPLIED where recorded, on the
+  # grounds that APPLIED already embeds preferential utilisation; fallback
+  # "min_eligible_pref_or_MFN"; contrast with the paper's implicit "PREF if claimed, else MFN"
+  # which is undefined on the word "claimed"
+  baseline_construction_rule: "APPLIED_direct"
+  # [UNSPECIFIED IN MANUSCRIPT] avoid double-imputing utilisation on already-applied rates
+  preference_utilisation_rule: "embedded_in_APPLIED"
+  # [I] a 10 pp increment is NOT a uniform shock in log space
+  ten_pp_log_shift: "Delta_ln(1+tau) varies 0.0408-0.0953 across base rates"
+  scenario_decimals_vs_factors: "increment added to tau, not to (1+tau)"  # [S]
+
+# --------------------------------------------------------------------------
+# 6. NODE AUGMENTATION AND THE COMPETITIVE NETWORK N2
+# --------------------------------------------------------------------------
+node_augmentation:
+  V_k_construction: "{ i : M_ikt > 0 } union { 'DOM' }"  # [I]
+  domestic_tariff_rate: 0.0  # [I]
+  domestic_included_in_benchmark: true  # [S]
+  domestic_tariff_invariant_across_states: true  # [I]
+  filter_aggregate_partner_codes: ["WLD", "EUN", "ROW", "ALL"]  # [X]
+  vegan_endogeneity_recording: "report |V_k| and its trade share, and how |V_k| varies with the applied MFN rate"  # [X]
+  domestic_nonzero_assertion: "the domestic node must respond in every market where any foreign margin moves; industries reporting identically zero domestic effects in Table 2 (8 of 17) require explanation"  # [I]
+
+# --------------------------------------------------------------------------
+# 7. SCENARIO CONSTRUCTION (decomposition of the Feb-2026 counterfactual)
+# --------------------------------------------------------------------------
+scenario_construction:
+  increment_selected_partners: 0.1  # [S]
+  increment_bolivia: 0.15  # [S]
+  increment_steel_aluminium: 0.25  # [S]
+  increment_motor_vehicles_parts: 0.25  # [S]
+  increment_copper: 0.5  # [S]
+  sectoral_buckets: ["steel and aluminium", "motor vehicles and parts", "copper"]  # [S]
+  sectoral_scope: "across exporters"  # [S]
+  partner_increment_scope: "partner-selective"  # [S]
+  rate_basis: "additional"  # [S]
+  sectoral_hs_code_lists:
+    # [UNSPECIFIED IN MANUSCRIPT] a plausible mapping on standard Sec. 232 product scope grounds;
+    # alternatives at HS4 and HS8 carried
+    steel_and_aluminium:
+      HS4_range: ["7208", "7229"]
+      HS4_add: ["7601", "7604", "7606", "7608"]
+      rule: "HS6 under these HS4 heads"
+    motor_vehicles_parts:  # [UNSPECIFIED IN MANUSCRIPT] as above
+      HS4_range: ["8701", "8705"]
+      HS4_add: ["8708"]
+      rule: "HS6 under these HS4 heads"
+    copper:  # [UNSPECIFIED IN MANUSCRIPT] as above
+      HS4_range: ["7401", "7419"]
+      HS4_add: []
+      rule: "HS6 under these HS4 heads"
+  selected_partners_set_P:
+    # [UNSPECIFIED IN MANUSCRIPT] enumerated on the reasoning that the Table 3 large-negative
+    # exporters (MEX, CAN, JPN, DEU, KOR, GBR, FRA, ITA) receive direct 10 pp increments, while
+    # the positive responders (CHN +17.0, IND +25.6, VNM +1.4) sit OUTSIDE the set and gain via
+    # amplification; Bolivia is treated separately at 15 pp per the paper's own text
+    primary: ["MEX", "CAN", "JPN", "DEU", "KOR", "GBR", "FRA", "ITA", "BRA", "IRQ", "CHE", "SAU"]
+    alternatives: ["all_major_partners_except_China_india", "explicit_tracker_coverage_lines"]
+    # [X] the amplification-gainers; China MUST be outside S for the China +17.0 percent Table 3
+    # test to be achievable
+    excluded_by_primary: ["CHN", "IND", "VNM"]
+    rationale: "reconciles the China +17.0 and India +25.6 results with the amplification mechanism; the prior evaluation flagged the original config placing China inside S as contradicting its own test (item E2)"
+  # [UNSPECIFIED IN MANUSCRIPT] maximum is conservative (a supplier eligible under both a partner
+  # 10 pp and a product 25 pp rule receives 25 pp, not 35 pp); alternative "additive" carried as a
+  # sensitivity axis
+  rule_precedence: "maximum"
+  # [UNSPECIFIED IN MANUSCRIPT] cap at the largest declared increment (copper); alternatives
+  # "none" and 0.35 carried
+  admissibility_ceiling: 0.5
+  domestic_node_increment: 0.0  # [I]
+
+# --------------------------------------------------------------------------
+# 8. EQUATION PARAMETERS
+# --------------------------------------------------------------------------
+equation_parameters:
+  eq01_02_tariff_change:
+    time_index_convention: ["0", "1"]  # [S]
+    null_case_mechanism: "MFN increase with preferential rate unchanged"  # [S]
+    insufficiency_claim: "d tau_ik does not characterise the change in market access"  # [S]
+  eq03_ces_reference:
+    alpha_symbol: "alpha_i"  # [S]
+    alpha_normalisation: 1.0  # [S]
+    alpha_lower_bound: 0.0  # [I]
+    # [X] EXACT CES inversion: alpha_i / alpha_j = s_ik(1+tau_ik)^(sigma_k-1) /
+    # s_jk(1+tau_jk)^(sigma_k-1); verified in the prior evaluation (item E1) as the only rule that
+    # reproduces observed shares identically
+    alpha_construction_rule: "alpha_i is proportional to s_ik * (1 + tau_ik)^(sigma_k - 1)"
+    # [X] residual |s_hat_ik - s_ik| < 1e-12 for all (i, k)
+    alpha_self_consistency_test: true
+    sigma_symbol: "sigma_k"  # [S]
+    sigma_lower_bound_exclusive: 1.0  # [S]
+    aggregator_exponent: "1 / (1 - sigma_k)"  # [I]
+    inner_exponent: "1 - sigma_k"  # [I]
+    limit_sigma_to_infinity: "min_i (1 + tau_ik)"  # [I]
+    limit_sigma_to_one: "Product_i (1 + tau_ik)^alpha_i"  # [I]
+    limit_verification_sigma_inf: 1000.0  # [X]
+    limit_verification_sigma_one: 1.0001  # [X]
+    limit_verification_tolerance: 1.0e-06  # [I]
+    sigma_industry_means_table1:
+      ISIC_11_Extraction_crude_petroleum: 22.78  # [S]
+      ISIC_15_Food_products: 41.9  # [S]
+      ISIC_17_Textiles: 13.23  # [S]
+      ISIC_19_Leather_luggage_footwear: 5.63  # [S]
+      ISIC_20_Wood_and_cork: 4.09  # [S]
+      ISIC_23_Coke_refined_petroleum: 2.78  # [S]
+      ISIC_24_Chemicals: 57.86  # [S]
+      ISIC_25_Rubber_and_plastics: 46.64  # [S]
+      ISIC_26_Other_non_metallic_mineral: 7.23  # [S]
+      ISIC_28_Fabricated_metal: 30.49  # [S]
+      ISIC_29_Machinery_equipment_nec: 11.99  # [S]
+      ISIC_31_Electrical_machinery: 4.91  # [S]
+      ISIC_32_Radio_TV_communication: 41.26  # [S]
+      ISIC_33_Medical_precision_optical: 64.33  # [S]
+      ISIC_34_Motor_vehicles_trailers: 17.18  # [S]
+      ISIC_35_Other_transport_equipment: 16.65  # [S]
+      ISIC_36_Furniture_manufacturing_nec: 10.03  # [S]
+    sigma_excluded_conventional_value: 2.0  # [S]
+    n_industries_reported: 17  # [S]
+  eq04_margin:
+    numerator: "(1 + T_k)"  # [I]
+    denominator: "(1 + tau_ik)"  # [I]
+    unit_of_measure: "dimensionless ratio, centred at unity"  # [I]
+    identity_condition: "btm = 1 iff tau_ik = T_k"  # [I]
+    interpretation_above_one: "relatively favourable treatment"  # [S]
+    interpretation_below_one: "relative disadvantage"  # [S]
+    observed_range_table1: [0.924, 1.095]  # [S]
+  eq05_non_equivalence:
+    relation_type: "non-implication"  # [S]
+    premise: "d tau_ik = 0"  # [S]
+    conclusion_denied: "d btm_ik = 0"  # [S]
+    beneficiaries_under_protection: "preferential exporters"  # [S]
+    losers_under_liberalization: "preferential exporters"  # [S]
+  eq06_13_two_experiments:
+    exporter_A_role: "preferential supplier; own tariff unchanged in both"  # [S]
+    exporter_B_role: "non-preferential supplier; own tariff is the shock"  # [S]
+    experiment_L_perturbation: "tau_B^1 < tau_B^0, tau_A^1 = tau_A^0"  # [S]
+    experiment_L_effect: "T_k^1 < T_k^0; btm_A^1 < btm_A^0"  # [S]
+    experiment_P_perturbation: "tau_B^1 > tau_B^0, tau_A^1 = tau_A^0"  # [S]
+    experiment_P_effect: "T_k^1 > T_k^0; btm_A^1 > btm_A^0"  # [S]
+    ceteris_paribus_clause: "holding other elements of the benchmark constant"  # [S]
+    named_mechanism_liberalization: "preference erosion"  # [S]
+    named_mechanism_protection: "preference amplification"  # [S]
+    direction_liberalization_chain: "tau_B down -> T_k down -> btm_A down"  # [S]
+    direction_protection_chain: "tau_B_MFN up -> T_k up -> btm_A up"  # [S]
+    bilateral_measure_blind_spot: "records no policy change for amplified-preference exporters"  # [S]
+  eq14_estimation:
+    estimator: "PPML"  # [S]
+    dependent_variable: "M_ikt"  # [I]
+    regressor: "ln(btm_ikt)"  # [S]
+    coefficient_symbol: "beta_k"  # [S]
+    fe_exporter_time: "gamma_it"  # [S]
+    fe_product_time: "delta_kt"  # [S]
+    fe_importer_time: null  # [I]
+    fe_bilateral: null  # [I]
+    zero_flows_retained: true  # [I]
+    # [UNSPECIFIED IN MANUSCRIPT] preferred specification imposes the cross-equation restriction
+    # H0: beta_bm_k = -beta_own_k; only this design tests the paper's claim that measurement and
+    # estimation are jointly determined. Design_A (the paper's executed choice, saturated in
+    # delta_kt) is carried as an alternative
+    design_choice: "Design_B_over_identified"
+    # [I] observationally equivalent under saturation
+    design_A_model: "exp[ -beta_k ln(1+tau_ikt) + gamma_it + delta_kt ]"
+    design_B_model: "exp[ beta_own_k ln(1+tau_ikt) + beta_bm_k ln(1+T_kt) + gamma_it + delta_k + delta_t + theta ln E_kt ]"  # [X]
+    design_B_hypothesis: "H0: beta_bm_k = -beta_own_k (Wald, chi^2(1))"  # [X]
+    identification_collinearity: "ln(1+T_kt) exactly collinear with delta_kt"  # [I]
+    equivalent_restricted_model: "exp[ -beta_k ln(1+tau_ikt) + gamma_it + delta'_kt ]"  # [I]
+    # [X] REMOVED "sigma = 1 - beta" per item E3 of the prior evaluation (violates sigma > 1 for
+    # beta > 0)
+    beta_to_sigma_map_candidates: ["sigma = beta + 1", "sigma = beta"]
+    # [X] the CES/Armington reading for a tariff-factor regressor
+    beta_to_sigma_map_primary: "sigma = beta + 1"
+    pe_disclaimer: "single-importer truncation is not a full structural-gravity model"  # [S]
+    resistance_absorption: "P_kt and E_kt absorbed by delta_kt; Pi_ikt and Y_ikt partly absorbed by gamma_it"  # [I]
+    resistance_failure_at_counterfactual: "absorption valid for estimation; fails under counterfactual because absorbed terms are functions of the policy"  # [I]
+  eq15_18_counterfactual_margin:
+    state_set_eq15: [0, 1]  # [S]
+    state_set_eq18: [0, "CF"]  # [S]
+    recompute_benchmark_from_complete_schedule: true  # [S]
+    bilateral_only_counterfactual_prohibited: true  # [S]
+    third_state_labelling_table1: ["BTM_CES", "BTM_SIM"]  # [S]
+  eq19_decomposition:
+    decomposition_exactness: "EXACT"  # [I]
+    own_tariff_component: "-Delta ln(1 + tau_ikt)"  # [S]
+    benchmark_component: "Delta ln(1 + T_kt)"  # [S]
+    domestic_own_component_identically_zero: true  # [I]
+    benchmark_component_never_reported: true  # [G] flagged as never published in the paper
+    cross_reference_in_table1_notes: "Equation (19)"  # [S]
+    spillover_weight: "omega_ik = alpha_i (1+tau_ik)^(1-sigma_k) / (1+T_k)^(1-sigma_k)"  # [I]
+    spillover_weight_conservation: "sum_i omega_ik = 1"  # [I]
+    sign_own: "d ln btm_ik / d ln(1+tau_ik) = omega_ik - 1 <= 0"  # [I]
+    sign_cross: "d ln btm_ik / d ln(1+tau_jk) = omega_jk >= 0"  # [I]
+    uniform_shock_invariance: "all foreign margins fall by a common factor when a uniform foreign shock is applied; domestic unchanged"  # [I]
+    multiplicative_factorisation: "1 + DeltaTrade = [(1+tau^0)/(1+tau^CF)]^beta * [(1+T^CF)/(1+T^0)]^beta"  # [I] NOT additive in dollars
+    # [X] resolves the "attribution never tabulated" gap
+    own_share_reported: true
+    benchmark_share_reported: true  # [X]
+  eq16_proportional_response:
+    closed_form: "(btm_CF / btm_0)^beta_hat - 1"  # [I]
+    fixed_effects_held_fixed: ["gamma_it", "delta_kt"]  # [I]
+    verification_tolerance: 1.0e-10  # [X]
+  eq17_valuation:
+    scaler: "M^0_ik"  # [S]
+    units: "millions of US dollars"  # [S]
+    closed_form_full: "M^0_ik * [ own_factor * benchmark_factor - 1 ]"  # [I]
+    own_multiplier: "[(1+tau^0_ik)/(1+tau^CF_ik)]^beta_hat_k"  # [I]
+    benchmark_multiplier: "[(1+T^CF_k)/(1+T^0_k)]^beta_hat_k"  # [I]
+    multipliers_structurally_identical: true  # [I]
+    domestic_own_multiplier: 1.0  # [I] pure benchmark
+    # [UNSPECIFIED IN MANUSCRIPT] eq. (17) uses observed M^0; Table 3's note uses predicted
+    # baseline. The two differ and Table 2 and Table 3 are not reconcilable to a common baseline
+    # without this declaration. Alternatives "predicted" and "both" carried
+    denominator_choice: "observed_baseline"
+    # [X] adds the adding-up constraint sum_i TradeEffect_ik = 0 within V_k, per item O1 of the
+    # prior evaluation
+    conserving_reallocation_imposed: true
+    # [X] the residual against excluded cells is reported; the conservation test on the paper's
+    # Table 2 fails by roughly 155.8 bn USD
+    residual_reported: true
+
+# --------------------------------------------------------------------------
+# 9. ALGORITHM PARAMETERS (procedures P1-P5, all unnumbered in the paper)
+# --------------------------------------------------------------------------
+algorithm_parameters:
+  P1_literature_space:
+    P1_corpus_size: 17  # [S]
+    P1_element_count: 9  # [S]
+    P1_coding_levels: [0.0, 0.5, 1.0]  # [S]
+    P1_coding_input_restriction: "abstract only"  # [S]
+    P1_excluded_elements:  # [S]
+      - "tariff change as source of variation"
+      - "product-level trade data"
+      - "US as importing market"
+    P1_gower_denominator: 9  # [S]
+    # = 1/18 [I] 9 elements, 2 half-units each, 18 half-units total
+    P1_gower_grid_resolution: 0.05555555555555555
+    P1_distance_target_nearest: 0.11  # [S] = 2/18
+    P1_distance_target_fugazza: 0.28  # [S] = 5/18
+    P1_distance_target_others: 0.33  # [S] = 6/18
+    P1_element_radius_R: 5.5  # [S]
+    P1_element_polar_angles_deg:  # [S]
+      E1: 90
+      E2: 50
+      E3: 10
+      E4: 330
+      E5: 290
+      E6: 250
+      E7: 210
+      E8: 170
+      E9: 130
+    P1_barycentre_weights: "c_sj"  # [S]
+    P1_repulsion_term:
+      # [UNSPECIFIED IN MANUSCRIPT] the paper states only "a small repulsion term"; primary =
+      # iterative symmetric displacement below a displacement threshold, with the threshold and
+      # iteration count logged
+      kernel: "iterative symmetric displacement"
+      # [UNSPECIFIED IN MANUSCRIPT] roughly 2.7 percent of R; chosen so that legibility gains are
+      # visible without deforming the ordering
+      max_displacement: 0.15
+      n_sweeps: 50  # [UNSPECIFIED IN MANUSCRIPT] a sweep cap
+    # [UNSPECIFIED IN MANUSCRIPT] EXACT tau = 1 over 136 pairs is unattainable for a 2D embedding
+    # of a non-Euclidean metric (item E6); 0.95 is the standard embedding-diagnostic threshold
+    P1_order_preservation_test: "Kendall tau >= 0.95 with Spearman rho reported"
+    # [UNSPECIFIED IN MANUSCRIPT] item O5 of the prior evaluation
+    P1_zero_claim_node_rule: "place at centroid of circle, marked unclassifiable"
+    # [UNSPECIFIED IN MANUSCRIPT] item O6 of the prior evaluation; a one-claim barycentre must lie
+    # on the ray to its element at radius R
+    P1_single_claim_ray_diagnostic: true
+    P1_edge_rendering_rule: "solid = 1, dashed = 0.5"  # [S]
+    P1_edges_rendered_in_source: 18  # [S]
+    P1_edges_possible: 153  # [I]
+    P1_merge_rule: "methodological papers with one design merged"  # [S]
+    P1_merge_rule_contradicted_by_figure: true  # [S]
+    P1_unresolved_citations: ["Hertel & Mix (2026)", "Nicita (2019)", "Wang & Hannan (2023)"]  # [G]
+    P1_anomalous_citation: "Dang, Krishna & Zhao (2003 in refs, 2026 in figure)"  # [G]
+    P1_unused_legend_categories: ["GE models (cyan)", "Elasticities (magenta)", "Market access (yellow)"]  # [S]
+    P1_inter_coder_kappa_minimum: 0.8  # [X]
+    P1_self_count_claim: "five at full strength vs maximum four elsewhere"  # [S]
+    P1_self_count_contradiction: "figure renders 3 solid + 2 dashed"  # [S]
+  P2_four_step_framework:
+    steps:  # [S]
+      - "define the policy experiment"
+      - "select the benchmark"
+      - "estimate the trade elasticity"
+      - "counterfactual evaluation"
+    compressed_schematic: "Tariff shock -> Market access -> Elasticity -> Trade effect"  # [S]
+    benchmark_menu:  # [S]
+      - "Delta tau_ik"
+      - "preference margin vs MFN"
+      - "competitor-based average"
+      - "CES-consistent btm_ikt"
+    benchmark_non_interchangeability: true  # [S]
+    measurement_estimation_non_separability: true  # [S]
+    early_aggregation_prohibited: true  # [S]
+    definition_bias: "error from choice of reference tariff"  # [S]
+    aggregation_bias: "error from collapsing heterogeneous supplier treatments"  # [S]
+  P3_fixed_point:
+    init_benchmark: "tau_MFN"  # [S]
+    update_map_order: ["btm", "beta_hat", "sigma_hat", "T_CES", "btm"]  # [S]
+    # [G] beta -> sigma map unspecified by the paper; see eq14 beta_to_sigma_map_primary
+    update_map_form: null
+    stopping_rule: "until convergence, subject to existence and stability"  # [S]
+    # [UNSPECIFIED IN MANUSCRIPT] standard numerical tolerance; enough to pin the printed
+    # 2-decimal sigma values and 3-decimal margins
+    convergence_tolerance: 1.0e-08
+    # [UNSPECIFIED IN MANUSCRIPT] generous cap for a contracting map; a divergence detector fires
+    # on non-decreasing residuals over 50 consecutive iterations
+    max_iterations: 500
+    # [UNSPECIFIED IN MANUSCRIPT] sup-norm on the parameter vector; alternative Euclidean norm
+    # carried
+    norm_for_convergence: "max_k |sigma_k^(r+1) - sigma_k^(r)|"
+    existence_check: "report coefficient map range at the fixed point"  # [UNSPECIFIED IN MANUSCRIPT]
+    stability_check: "spectral radius rho of the numerical Jacobian of F; require rho < 1"  # [UNSPECIFIED IN MANUSCRIPT]
+    # [UNSPECIFIED IN MANUSCRIPT] under eq. (14) Design A, the map is the identity and the loop
+    # terminates on the first pass; under Design B, iteration has content
+    documented_as_executed: "single_pass_under_Design_A"
+    structural_finding: "under Design A, d beta_hat / d sigma = 0; every sigma is a fixed point; convergence is vacuous"  # [I]
+  P4_counterfactual:
+    permitted_closures: ["partial equilibrium", "general equilibrium"]  # [S]
+    closure_axes: ["expenditures", "output", "factory-gate prices", "multilateral resistance"]  # [S]
+    pe_ge_non_interchangeability: true  # [S]
+    recompute_benchmark_first: true  # [S]
+  P5_empirical_pipeline:
+    data_sources: ["ITPDE (bilateral + domestic)", "WITS-TRAINS (applied + MFN)"]  # [S]
+    panel_window: [2016, 2021]  # [S]
+    scenario_source: "Atlantic Council Trump Tariff Tracker"  # [S]
+    scenario_access_date: "May 2026"  # [S]
+    scenario_date: "February 2026"  # [S]
+    filter_rule: "beta_hat_k > 0 AND significant"  # [S]
+    # [UNSPECIFIED IN MANUSCRIPT] see sample_construction
+    filter_significance_threshold: 0.05
+    excluded_industries: "sigma_k = 2"  # [S]
+
+# --------------------------------------------------------------------------
+# 10. NETWORK ARCHITECTURE PARAMETERS
+# --------------------------------------------------------------------------
+network_architecture_parameters:
+  machine_learning_architectures: 0  # [S]
+  network_objects_discussed: 5
+  network_architectures_constructed: 3
+  NA1_literature_affiliation:
+    mode_S: ["studies", 17]  # [S]
+    mode_E: ["elements", 9]  # [S]
+    bipartite: true  # [S]
+    edge_weight_set: [0.0, 0.5, 1.0]  # [S]
+    distance_metric: "Gower (1971)"  # [S]
+    embedding: "claim-weighted barycentre"  # [S]
+    output: ["Figure 1", "Gower matrix", "0.11 / 0.28 / >= 0.33"]
+    interface_to_econometric_chain: "NONE"  # [I]
+  NA2_ces_benchmark_network:
+    node_set: "{foreign exporters with M > 0} union {DOM}"  # [I]
+    domestic_tariff: 0.0  # [I]
+    edge_attributes: ["alpha_i", "(1+tau_ikt)"]  # [I]
+    induced_supplier_supplier_edges: "complete graph, strength governed by sigma_k"  # [I]
+    weight_matrix_row_stochastic: true  # [I]
+    weight_matrix_form: "omega_ik = alpha_i (1+tau_ik)^(1-sigma_k) / (1+T_k)^(1-sigma_k)"  # [I]
+    weight_matrix_conservation: "sum_i omega_ik = 1"  # [I]
+    aggregation_operator: "PowMean_{1-sigma_k} over i with weights alpha"  # [I]
+    key_parameter: "sigma_k"  # [S]
+    identification_issue: "benchmark component absorbed by delta_kt"  # [I]
+  NA3_gravity_network:
+    node_set: "countries as exporters and importers"  # [I]
+    edges: "directed, one per ordered pair"  # [I]
+    edge_weight: "M_ikt"  # [I]
+    node_potentials: "multilateral resistance terms"  # [S]
+    implemented_truncation: "single importer"  # [I]
+    estimator: "PPML"  # [S]
+    removed_by_truncation:  # [I]
+      - "importer-time FE"
+      - "inward MR"
+      - "outward MR"
+      - "third-country market clearing"
+      - "expenditure/output/price adjustment"
+  NA4_preference_network:
+    asserted_structure: "graph on country pairs with a preferential schedule per edge"  # [S]
+    constructed: false  # [I]
+    element_code: "E9"  # [S]
+  NA5_production_network:
+    asserted_structure: "directed input-output linkages across sectors and countries"  # [S]
+    constructed: false  # [I]
+    element_code: "E6"  # [S]
+    consequence: "downstream incidence of sectoral tariffs outside the model"  # [I]
+
+# --------------------------------------------------------------------------
+# 11. ESTIMATION SETTINGS (PPML / high-dimensional fixed effects)
+# --------------------------------------------------------------------------
+estimation_settings:
+  loss_objective: "PPML pseudo-likelihood (Poisson deviance)"  # [I]
+  optimizer: "IRLS / Newton-type"  # [X]
+  # [UNSPECIFIED IN MANUSCRIPT] standard HD-FE PPML implementation; alternative = within
+  # transformation for balanced panels
+  fe_absorption_method: "alternating projections for two-way HD FE"
+  # [UNSPECIFIED IN MANUSCRIPT] standard numerical tolerance; necessary to reproduce 2-decimal
+  # sigma and 3-decimal margins
+  convergence_tolerance: 1.0e-08
+  # [UNSPECIFIED IN MANUSCRIPT] cap; separation detector on cells with zero fitted value and
+  # positive observed value fires before cap on large panels
+  max_iterations: 1000
+  separation_rule: "detect and report; drop separating cells"  # [UNSPECIFIED IN MANUSCRIPT]
+  # [UNSPECIFIED IN MANUSCRIPT] PPML deviance weighting is implicit; alternative = weight by
+  # import share
+  weights: "unweighted"
+  # [UNSPECIFIED IN MANUSCRIPT] two-way clustering; alternatives single-dimension carried
+  clustering_dimension: ["exporter", "product_time"]
+  small_cluster_correction: "applied"  # [X]
+  bootstrap_replications: null  # [G]
+  parameter_estimates_reported_in_paper: 0  # [S] beta_hat never printed
+
+# --------------------------------------------------------------------------
+# 12. AGGREGATION AND REPORTING
+# --------------------------------------------------------------------------
+aggregation_reporting_scope:
+  table1:
+    change_formula: "(BTM_SIM / BTM_CES - 1) * 100"  # [S]
+    functional: "ratio of industry-level averages"  # [S]
+    sign_pattern:  # [S]
+      positive: 13
+      negative: 4
+    negative_industries:  # [S]
+      - "crude petroleum (-1.11)"
+      - "fabricated metals (-3.74)"
+      - "motor vehicles (-3.03)"
+      - "wood (-5.91)"
+    decimals:  # [S]
+      margin: 3
+      sigma: 2
+      percent: 2
+    guard_not_a_decomposition: "Table 1 is NOT an explicit decomposition of eq. (19)"  # [S]
+  table2:
+    gains_def: "sum of TradeEffect_ik over TradeEffect_ik > 0"  # [S]
+    losses_def: "sum of TradeEffect_ik over TradeEffect_ik < 0"  # [S]
+    net_formula: "Gains + Losses"  # [S]
+    split: ["international", "domestic"]  # [S]
+    units: "millions of US dollars"  # [S]
+    rounding_tolerance: 1  # [I]
+    rounding_discrepancies: ["food 2,834 vs 2,835", "medical -48,116 vs -48,115", "rubber -3,184 vs -3,185"]  # [S]
+    domestic_nonzero_industries: 8  # [S]
+    column_sum_check: "must be zero under closure; paper's own sum is ~-155.8 bn"  # [X]
+  table3:
+    net_percent_formula: "(Gains + Losses) / Baseline * 100"  # [S]
+    # [S] note to Table 3; inconsistent with eq. (17)'s observed M^0
+    denominator: "baseline_predicted_trade"
+    selection_rule: "baseline predicted trade"  # [S]
+    n_exporters: 15  # [S]
+    positive_exporters: ["China +17.0", "India +25.6", "Vietnam +1.4"]  # [S]
+    large_negative: ["Japan -37.2", "Germany -29.5", "Mexico -26.8", "UK -26.5", "South Korea -24.6"]  # [S]
+    published_values_reference:
+      Canada: [119252, 1692, -22620, -17.5]
+      Mexico: [83738, 5630, -28070, -26.8]
+      China: [61888, 16851, -6316, 17.0]
+      Japan: [41257, 698, -16029, -37.2]
+      Germany: [28777, 704, -9203, -29.5]
+      "South Korea": [16344, 939, -4962, -24.6]
+      "United Kingdom": [14583, 377, -4234, -26.5]
+      "Saudi Arabia": [14383, 30, -1474, -10.0]
+      France: [13046, 251, -2145, -14.5]
+      Vietnam: [12727, 604, -427, 1.4]
+      Italy: [12652, 735, -3238, -19.8]
+      India: [8912, 4063, -1778, 25.6]
+      Brazil: [7850, 165, -760, -7.6]
+      Iraq: [7252, 0, -728, -10.0]
+      Switzerland: [6616, 153, -1640, -22.5]  # [S]
+  cross_table:
+    three_functionals:  # [I]
+      - "ratio of means (Table 1)"
+      - "mean of ratios"
+      - "weighted sum of nonlinear transforms (Table 2)"
+    sign_coincidence_not_required: true  # [S]
+    samples_may_differ_across_tables: true  # [I]
+
+# --------------------------------------------------------------------------
+# 13. AUTOMATED INSTRUMENTATION (OPTIONAL ADDITION, NOT IN THE PAPER)
+# --------------------------------------------------------------------------
+automated_instrumentation:
+  present_in_paper: false  # [S]
+  permitted_use_only: "coding abstracts into the nine-element ordinal scheme"  # [X]
+  prohibited_uses:  # [X]
+    - "generating beta_hat"
+    - "imputing alpha_i"
+    - "generating tariff codes without human verification"
+    - "adjudicating table mismatches"
+  llm_provider: "Anthropic"  # [X]
+  # [X] placeholder; MUST be pinned to the exact version at execution time, together with the
+  # execution date
+  llm_model_name: "claude-sonnet-4-5"
+  llm_api_key_env_var: "ANTHROPIC_API_KEY"  # [X]
+  llm_settings:
+    temperature: 0.0  # [X]
+    top_p: 1.0  # [X]
+    max_tokens: 1200  # [X]
+    single_turn: true  # [X]
+    tools_enabled: false  # [X]
+    retrieval_enabled: false  # [X]
+    structured_output: true  # [X]
+    refuse_and_flag_on_ambiguity: true  # [X]
+    blind_to_answer_key: true  # [X]
+    # [X] one automated pass to be compared against one independent human pass; NOT two LLM passes
+    # against each other (which share a blind spot)
+    passes_per_abstract: 1
+    human_adjudication_of_partial_codes: true  # [X]
+  system_prompt: |-  # [X]
+    You are coding one research ABSTRACT against a fixed nine-element codebook.
+    You will be given the abstract and the operational definitions of
+    the nine elements.
+
+    Return a JSON object with exactly nine keys E1..E9.
+    Each value must be one of 0, 0.5, 1, or "FLAG".
+
+    Use 1 only if the abstract explicitly claims the element as
+    defined. Use 0.5 only if the claim is partial or implicit under
+    the definition's partial-claim clause. Use 0 if the definition's
+    absence clause applies. Use "FLAG" only if the abstract is
+    genuinely ambiguous between two values; in that case state both
+    candidates in the 'diagnostic' field.
+
+    You will also be given, for each element, the exact verbatim
+    definitions for the 1, 0.5, and 0 cases. Apply them literally.
+    Do NOT reward a topic for being mentioned; a claim requires
+    that the abstract assert it. Do NOT infer from authors, journal,
+    year, or field. Do NOT use outside knowledge. Do NOT speculate
+    about the paper's body beyond what the abstract states.
+  user_prompt_template: |-  # [X]
+    ELEMENT DEFINITIONS (from the codebook; apply literally)
+    --------------------------------------------------------
+    {element_definitions_verbatim}
+
+    EXCLUDED ELEMENTS (do not code these)
+    -------------------------------------
+    {excluded_elements_verbatim}
+
+    ABSTRACT (verbatim; the only permitted input)
+    ----------------------------------------------
+    {abstract_text}
+
+    Return the nine-field JSON object described in the system message.
+    For every non-zero or FLAG code, include a 'justification' field
+    containing a verbatim substring of the abstract that warrants it.
+  validation_prompt_template: |-  # [X]
+    You are auditing a coding decision against the codebook.
+    You are given one element's three-level definition and the
+    assigned code together with its claimed evidence span.
+
+    Answer only: (a) is the evidence span literally present in the
+    abstract; and (b) does the assigned code CORRECTLY APPLY the
+    three-level rule to that span — including, where the assigned
+    code is 0.5, whether the 0.5 clause applies rather than the 1 or
+    0 clause.
+
+    Reply with JSON:
+    {"span_present": true|false,
+     "code_correct_for_span": true|false,
+     "correct_code": 0|0.5|1|"FLAG",
+     "reason": "<one sentence>"}
+
+    ELEMENT DEFINITION (all three levels):
+    {element_definition_full}
+    ASSIGNED CODE: {code}
+    CLAIMED EVIDENCE: {evidence_span}
+    ABSTRACT: {abstract_text}
+
+# --------------------------------------------------------------------------
+# 14. PLOT AND FIGURE PARAMETERS
+# --------------------------------------------------------------------------
+plot_construction_parameters:
+  figure_1:
+    tikz_options: "[scale=0.85, every node/.style={transform shape}]"  # [S]
+    radius_R: 5.5  # [S]
+    boundary_circle: "dashed, gray!30"  # [S]
+    colors:
+      reference_node: "red"  # [S]
+      strand_A: "orange!80!black"  # [S]
+      strand_B: "blue!80!black"  # [S]
+      strand_C: "teal!80!black"  # [S]
+    legend_categories_declared:  # [S]
+      - "Price incidence"
+      - "Product-level diversion"
+      - "Global reallocation"
+      - "GE models"
+      - "Elasticities"
+      - "Market access"
+    legend_categories_unused: ["GE models", "Elasticities", "Market access"]  # [S]
+  figure_2:
+    anchor_levels:  # [S]
+      Tk0: 4.5
+      Tk1: 3.8
+      tauA0: 2.5
+      tauB0: 3.5
+      tauB1: 1.8
+  figure_3:
+    anchor_levels:  # [S]
+      Tk0: 3.8
+      Tk1: 4.8
+      tauA0: 1.8
+      tauB0: 3.2
+      tauB1: 4.5
+  table_construction:
+    package: "booktabs"  # [S]
+    font: "small"  # [S]
+    note_env: "parbox with footnotesize textit"  # [S]
+
+# --------------------------------------------------------------------------
+# 15. REPLICATOR'S IMPUTATION REGISTER (pre-declared; all [X])
+# --------------------------------------------------------------------------
+replicator_imputation_register:
+  G1_alpha_rule:
+    # [X] EXACT CES inversion; the prior config's "expenditure shares" is a misspecification
+    # corrected here
+    primary: "alpha_i is proportional to s_ik * (1 + tau_ik)^(sigma_k - 1), normalised to sum to 1"
+    rationale: "the only rule that reproduces observed shares identically after inversion; verified analytically and numerically"
+    alternatives: ["uniform (1/|V_k|)", "import shares, foreign only"]
+    acceptance_test: "predicted shares equal observed shares to 1e-12 for every (i, k)"
+  G2_beta_k:
+    primary: "sigma_bar_k - 1 (derived from Table 1, col. 2)"  # [X]
+    rationale: "the CES/Armington reading under a tariff-factor regressor; the map beta = sigma - 1 is the natural one; alternatives sigma = beta (which is admissibility-equivalent only if the regressor is a factor-ratio)"
+    alternatives: ["re-estimate by Design B", "sigma = beta"]
+    note: "the paper never prints beta_hat; only sigma_bar_k appears in Table 1 col. 2; the derivation is a calibration, not an identification"
+  G3_beta_to_sigma_map:
+    # [X] REMOVED the "sigma = 1 - beta" candidate per item E3 of the prior evaluation (violates
+    # sigma > 1)
+    candidates: ["sigma = beta + 1", "sigma = beta"]
+    # [UNSPECIFIED IN MANUSCRIPT] label as calibration, not identification; the selection is
+    # disclosed
+    selection: "choose map reproducing Table 1 col. 2 to 2 dp"
+  G4_significance_threshold:
+    primary: 0.05  # [UNSPECIFIED IN MANUSCRIPT]
+    grid: [0.01, 0.05, 0.1]  # [X]
+  G5_baseline_year_and_window:
+    # [UNSPECIFIED IN MANUSCRIPT] last pre-2018 wave year; alternatives 2021 and the 2016-2021
+    # mean
+    baseline_year_for_margins: 2017
+    # [S] the two decisions are distinct; the paper uses the full window for estimation and does
+    # not state a baseline year for the margins
+    estimation_window: [2016, 2021]
+    alternatives_baseline_year: [2021, "2016-2021 mean"]  # [X]
+  G6_product_level:
+    primary: "HS6"  # [UNSPECIFIED IN MANUSCRIPT]
+    alternatives: ["HS8", "HS10"]
+    test: "verify tariff varies across i within k at the chosen level; if it does not, a coarser level is required"
+    open_question: "at what level is V_k defined, and hence the CES benchmark computed — HS6, or ISIC 2-digit? The two give different network topologies and different margins; the choice must be declared"
+  G7_ave_convention:
+    primary: "WITS-supplied AVEs where available"
+    fallback: "unit-value basis, with source recorded"
+    # [UNSPECIFIED IN MANUSCRIPT] 100 percent cap so (1+tau) is finite inside the power mean
+    prohibitive_ceiling: 1.0
+    record: "affected cells and trade share"
+  G8_repulsion_term:
+    primary: "iterative symmetric displacement below declared threshold"
+    max_displacement: 0.15  # [UNSPECIFIED IN MANUSCRIPT]
+    n_sweeps: 50  # [UNSPECIFIED IN MANUSCRIPT]
+    # [UNSPECIFIED IN MANUSCRIPT] tau = 1 is unattainable for a 2D embedding of a non-metric Gower
+    # space
+    invariant: "Kendall tau >= 0.95 over all pairs, with Spearman rho reported"
+  G9_selected_partners_set_P:
+    # [UNSPECIFIED IN MANUSCRIPT] see scenario_construction; China, India, and Vietnam excluded so
+    # that amplification reproduces the positive results
+    primary: ["MEX", "CAN", "JPN", "DEU", "KOR", "GBR", "FRA", "ITA", "BRA", "IRQ", "CHE", "SAU"]
+    test: "must reproduce China +17.0 percent, India +25.6 percent"
+    note: "the prior config placed China IN S and thereby contradicted its own test; corrected (item E2)"
+  G10_rule_precedence:
+    candidates: ["additive", "max"]  # [UNSPECIFIED IN MANUSCRIPT]
+    primary: "max"  # conservative
+    report: "both; note which matches Table 2 magnitudes"
+  G11_clustering_dimension:
+    primary: ["exporter", "product_time"]  # [UNSPECIFIED IN MANUSCRIPT]
+    alternatives: ["product_time only", "exporter only"]  # [X]
+  G12_conserving_reallocation:
+    # [X] the paper's Table 2 does NOT satisfy this; the residual must be reported as a finding of
+    # the reproduction, not suppressed
+    primary: "impose sum_i TradeEffect_ik = 0 within V_k"
+    residual_reporting: "report against excluded cells; the paper's printed sum is approximately -155.8 bn"
+
+# --------------------------------------------------------------------------
+# 16. INTEGRITY, AUDIT, AND ACCEPTANCE TESTS
+# --------------------------------------------------------------------------
+integrity_and_audit:
+  algebraic_tests:
+    T1_gower_self:
+      identity: "D_ss = 0 for all s"
+      tol: "exact"
+    T2_gower_symmetry:
+      identity: "D_ss' = D_s's for all s,s'"
+      tol: "exact"
+    T3_gower_grid:
+      identity: "18 * D_ss' in Z"
+      tol: "exact"
+    T4_weight_conservation:
+      identity: "sum_i omega_ik = 1"
+      tol: 1.0e-12
+    T5_ces_limit_inf:
+      identity: "sigma -> inf: 1+T_k -> min_i (1+tau_i)"
+      tol: 1.0e-06
+    T6_ces_limit_one:
+      identity: "sigma -> 1: 1+T_k -> prod_i (1+tau_i)^alpha_i"
+      tol: 1.0e-06
+    T7_margin_definition:
+      identity: "btm_ik recomputed from 1+T_k"
+      tol: 1.0e-15
+    T8_attribution:
+      identity: "-Delta_ln(1+tau) + Delta_ln(1+T) = Delta_ln btm"
+      tol: 1.0e-15
+    T9_multiplicative_factorisation:
+      identity: "own_factor * bench_factor = btm_CF / btm_0"
+      tol: 1.0e-14
+    T10_jacobian_zero_row_sum:
+      identity: "sum_j d ln M_i / d ln(1+tau_j) = 0 over V_k"
+      tol: 1.0e-12
+    T11_uniform_foreign_shock:
+      identity: "all foreign margins fall by a common factor; domestic unchanged"
+      tol: 1.0e-12
+    T12_conserving_reallocation:
+      identity: "sum_i TradeEffect_ik = 0 over V_k"
+      tol: 1.0e-10
+    T13_alpha_self_consistency:
+      identity: "predicted shares equal observed shares"
+      tol: 1.0e-12
+    T14_fixed_point_map:
+      identity: "||F(sigma) - sigma|| < tol AND spectral_radius < 1"
+      tol: 1.0e-10
+    T15_domestic_own_factor_unity:
+      identity: "own_multiplier for DOM = 1.0"
+      tol: 1.0e-15
+    T16_table1_arithmetic:
+      identity: "DeltaBTM = (SIM/CES - 1) * 100"
+      tol: 0.01
+  sign_pattern_tests:
+    table1_industry_margins:  # [S]
+      positive: 13
+      negative: 4
+    table2_domestic_nonzero_industries: 8  # [S]
+    table3_positives: ["China", "India", "Vietnam"]  # [S]
+    table3_large_negatives: ["Japan", "Mexico", "Germany"]  # [S]
+  calibration_hazard_reconciliations:
+    industry: "Medical, precision and optical instruments"  # [S]
+    delta_btm_percent: 7.88  # [S]
+    sigma: 64.33  # [S]
+    implied_multiplier_if_identity: 63.33  # [I]
+    implied_delta_ln_M: 4.8033  # [I] = 63.33 * ln(1.0788)
+    # [I] exp(4.8033) - 1 ~ 121.02, times 100; the earlier config's 12150 was a rounding
+    implied_percent_expansion: 12102.0
+    reconciliations_to_test:
+      - "industry-mean sigma masks per-product variation"  # [X]
+      - "the beta-to-sigma map is not the identity (i.e., sigma = beta is correct, not sigma = beta + 1)"  # [X]
+      - "Table 2 aggregation is over product-level effects with offsetting signs within the industry"  # [X]
+    verdict_test: "which of the three reconciles the +647 foreign net with the +7.88 percent margin"
+  three_sequential_calibration_targets:
+    - "sigma_bar_k vector (Table 1 col. 2) — isolates the elasticity pipeline"
+    - "BTM levels (Table 1 cols. 3-4, 3 dp) — isolates alpha construction and baseline year"
+    - "dollar effects (Tables 2-3) — isolates beta_hat, S membership, sectoral codes, precedence"
+  sensitivity_grid_axes:
+    - "alpha rule (G1)"
+    - "baseline year (G5)"
+    - "beta-to-sigma map (G3)"
+    - "filter threshold (G4)"
+    - "rule precedence (G10)"
+    - "estimation route (Design A vs B)"
+    - "S membership (G9)"
+    - "product level (G6)"
+  deliverables_absent_from_paper:
+    - "beta_hat_k with SEs and p-values"
+    - "Delta_ln(1+T_k) by product and industry"
+    - "alpha_i construction and values"
+    - "the beta-to-sigma map with selecting derivation"
+    - "filter counts and excluded trade share"
+    - "P3 convergence diagnostics"
+    - "per-table sample composition"
+    - "full sensitivity grid"
+    - "the algebraic tests T1-T16"
+    - "resolution of three missing citations and the Dang date"
+    - "attribution table with own and benchmark components as separate columns"
+    - "conserving reallocation and its residual"
+
+# --------------------------------------------------------------------------
+# 17. VERIFICATION TARGETS
+# --------------------------------------------------------------------------
+verification_targets:
+  table1_sigma:
+    ISIC_11:
+      target: 22.78
+      tol: 0.01
+    ISIC_15:
+      target: 41.9
+      tol: 0.01
+    ISIC_17:
+      target: 13.23
+      tol: 0.01
+    ISIC_19:
+      target: 5.63
+      tol: 0.01
+    ISIC_20:
+      target: 4.09
+      tol: 0.01
+    ISIC_23:
+      target: 2.78
+      tol: 0.01
+    ISIC_24:
+      target: 57.86
+      tol: 0.01
+    ISIC_25:
+      target: 46.64
+      tol: 0.01
+    ISIC_26:
+      target: 7.23
+      tol: 0.01
+    ISIC_28:
+      target: 30.49
+      tol: 0.01
+    ISIC_29:
+      target: 11.99
+      tol: 0.01
+    ISIC_31:
+      target: 4.91
+      tol: 0.01
+    ISIC_32:
+      target: 41.26
+      tol: 0.01
+    ISIC_33:
+      target: 64.33
+      tol: 0.01
+    ISIC_34:
+      target: 17.18
+      tol: 0.01
+    ISIC_35:
+      target: 16.65
+      tol: 0.01
+    ISIC_36:
+      target: 10.03
+      tol: 0.01
+  table1_btm_ces:
+    ISIC_11:
+      target: 0.995
+      tol: 0.001
+    ISIC_15:
+      target: 0.982
+      tol: 0.001
+    ISIC_17:
+      target: 0.993
+      tol: 0.001
+    ISIC_19:
+      target: 1.038
+      tol: 0.001
+    ISIC_20:
+      target: 0.982
+      tol: 0.001
+    ISIC_23:
+      target: 0.981
+      tol: 0.001
+    ISIC_24:
+      target: 0.994
+      tol: 0.001
+    ISIC_25:
+      target: 0.998
+      tol: 0.001
+    ISIC_26:
+      target: 0.99
+      tol: 0.001
+    ISIC_28:
+      target: 0.99
+      tol: 0.001
+    ISIC_29:
+      target: 0.989
+      tol: 0.001
+    ISIC_31:
+      target: 0.999
+      tol: 0.001
+    ISIC_32:
+      target: 0.984
+      tol: 0.001
+    ISIC_33:
+      target: 1.015
+      tol: 0.001
+    ISIC_34:
+      target: 0.99
+      tol: 0.001
+    ISIC_35:
+      target: 0.97
+      tol: 0.001
+    ISIC_36:
+      target: 0.993
+      tol: 0.001
+  table1_btm_sim:
+    ISIC_11:
+      target: 0.984
+      tol: 0.001
+    ISIC_15:
+      target: 1.022
+      tol: 0.001
+    ISIC_17:
+      target: 1.008
+      tol: 0.001
+    ISIC_19:
+      target: 1.066
+      tol: 0.001
+    ISIC_20:
+      target: 0.924
+      tol: 0.001
+    ISIC_23:
+      target: 1.002
+      tol: 0.001
+    ISIC_24:
+      target: 1.018
+      tol: 0.001
+    ISIC_25:
+      target: 1.029
+      tol: 0.001
+    ISIC_26:
+      target: 1.0
+      tol: 0.001
+    ISIC_28:
+      target: 0.953
+      tol: 0.001
+    ISIC_29:
+      target: 1.006
+      tol: 0.001
+    ISIC_31:
+      target: 1.027
+      tol: 0.001
+    ISIC_32:
+      target: 1.018
+      tol: 0.001
+    ISIC_33:
+      target: 1.095
+      tol: 0.001
+    ISIC_34:
+      target: 0.96
+      tol: 0.001
+    ISIC_35:
+      target: 0.981
+      tol: 0.001
+    ISIC_36:
+      target: 1.006
+      tol: 0.001
+  table1_delta_btm_percent:
+    sign_pattern:  # [S]
+      positive: 13
+      negative: 4
+    specific_targets:
+      ISIC_11:
+        target: -1.11
+        tol: 0.01
+      ISIC_15:
+        target: 4.07
+        tol: 0.01
+      ISIC_19:
+        target: 2.7
+        tol: 0.01
+      ISIC_20:
+        target: -5.91
+        tol: 0.01
+      ISIC_28:
+        target: -3.74
+        tol: 0.01
+      ISIC_32:
+        target: 3.46
+        tol: 0.01
+      ISIC_33:
+        target: 7.88
+        tol: 0.01
+      ISIC_34:
+        target: -3.03
+        tol: 0.01
+  table2_arithmetic:
+    row_sum_check: "every row's net = integer sum of four components"  # [S]
+    column_sum_check: "column sum of net effects = 0 under closure"  # [X]
+    observed_column_sum: -155800.0  # [I] millons of USD; approximately
+  table2_specific_cells:
+    motor_vehicles_net:  # [S]
+      target: -74455
+      tol: 1
+    medical_net:  # [S]
+      target: -48115
+      tol: 1
+    textiles_international_gain:  # [S]
+      target: 27874
+      tol: 1
+    furniture_domestic_gain:  # [S]
+      target: 12766
+      tol: 1
+  table3_net_percent:
+    Canada:
+      target: -17.5
+      tol: 0.1
+    Mexico:
+      target: -26.8
+      tol: 0.1
+    China:
+      target: 17.0
+      tol: 0.1
+    Japan:
+      target: -37.2
+      tol: 0.1
+    Germany:
+      target: -29.5
+      tol: 0.1
+    "South Korea":
+      target: -24.6
+      tol: 0.1
+    "United Kingdom":
+      target: -26.5
+      tol: 0.1
+    "Saudi Arabia":
+      target: -10.0
+      tol: 0.1
+    France:
+      target: -14.5
+      tol: 0.1
+    Vietnam:
+      target: 1.4
+      tol: 0.1
+    Italy:
+      target: -19.8
+      tol: 0.1
+    India:
+      target: 25.6
+      tol: 0.1
+    Brazil:
+      target: -7.6
+      tol: 0.1
+    Iraq:
+      target: -10.0
+      tol: 0.1
+    Switzerland:
+      target: -22.5
+      tol: 0.1
+  gower_distances:
+    merged_cs_vs_reference:
+      target: 0.1111111111111111  # = 2/18
+      tol: "half-unit"
+    fugazza_vs_reference:
+      target: 0.2777777777777778  # = 5/18
+      tol: "half-unit"
+    all_others_vs_reference:
+      target: ">= 6/18"
+      tol: "half-unit"
+  figure_self_count:
+    reference_full_claims_stated: 5  # [S]
+    reference_full_claims_drawn: 3  # [S]
+    unused_legend_categories: 3  # [S]
+    drawn_edges: 18  # [S]
+    possible_edges: 153  # [I]
+  # [X] every test in integrity_and_audit.algebraic_tests must return pass
+  algebraic_identities_all_pass: true
