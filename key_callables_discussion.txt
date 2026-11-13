@@ -1,12 +1,12 @@
 ## Key callables, Tasks 1 to 27
 
-This document discusses the 27 task orchestrators of `from_tariff_changes_to_trade_effects_edited.ipynb`, one per task and in notebook order: `run_task_1` to `run_task_27`. 
+This document discusses the 27 task orchestrators of the research pipeline which is presented in the `from_tariff_changes_to_trade_effects_edited.ipynb` notebook, one per task and in notebook order: `run_task_1` to `run_task_27`. 
 
 Each orchestrator is the last callable in its task cell. It validates the task's inputs, calls the task's step callables in their contractual order and writes the task's artefacts. The step callables and private helpers are described inside their parent task, not counted separately.
 
 Python implementation author: **CS Chirinda**.
 
-**Sources.** Each description is taken from the orchestrator's signature and documented contract, from the docstrings and code of the step callables it calls, and from the notebook's `STUDY_CONFIG`. The methodological standard is the paper, Cipollina and De Benedictis (2026), *From Tariff Changes to Trade Effects: A Practical Framework for Empirical Trade Policy Analysis* (`latex_context.txt`). Quotations come from that source.
+**Sources.** Each description is taken from the orchestrator's signature and documented contract, from the docstrings and code of the step callables it calls, and from the notebook's `STUDY_CONFIG`. The methodological standard is the paper, Cipollina and De Benedictis (2026), *From Tariff Changes to Trade Effects: A Practical Framework for Empirical Trade Policy Analysis* ( i.e. the `latex context`). Quotations come from that source.
 
 **How the 27 tasks fit together.** The pipeline follows the paper's four-step sequence, tariff shock → market access → elasticity → trade effect, plus the two-mode literature map of Section 1.1:
 
