@@ -102,7 +102,7 @@ run_task_25(
 - **Benchmark and margin (eqs. 3, 4, 18):**
 
 $$
-1+T^{s}_{k}=\left[\sum_{i\in V_k}\alpha_i\left(1+\tau^{s}_{ik}\right)^{1-\sigma_k}\right]^{\frac{1}{1-\sigma_k}},\qquad BTM^{s}_{ik}=\frac{1+T^{s}_{k}}{1+\tau^{s}_{ik}},\qquad s\in\lbrace 0,CF\rbrace ,\qquad V_k=\lbrace i:M_{ik}>0\rbrace\cup\lbrace\mathrm{DOM}\rbrace .
+1+T_{k}^{s}=\left[\sum_{i\in V_k}\alpha_i\left(1+\tau_{ik}^{s}\right)^{1-\sigma_k}\right]^{\frac{1}{1-\sigma_k}},\qquad BTM_{ik}^{s}=\frac{1+T_{k}^{s}}{1+\tau_{ik}^{s}},\qquad s\in\lbrace 0,CF\rbrace ,\qquad V_k=\lbrace i:M_{ik}>0\rbrace\cup\lbrace\mathrm{DOM}\rbrace .
 $$
 
 - **Estimation (eq. 14) and the declared map:**
@@ -2867,7 +2867,7 @@ These are mechanical consequences of the declared calibration, which is the haza
 T5 checks the limit $\lim_{\sigma\to\infty}(1+T_k)=\min_i(1+\tau_i)$ at the finite $\sigma_\infty=1000$ of `config.yaml`, to $10^{-6}$. The raw gap cannot meet that tolerance at $\sigma=1000$, so T5 binds a Laplace-extraction statistic: the aggregator multiplied by $A^{1/(\sigma_\infty-1)}$. Here $A$ is the summed weight of every supplier tied at the minimum factor (relative tolerance $10^{-12}$), because
 
 $$
-1+T_k\ \longrightarrow\ \Bigl(\sum_{i:\,\tau_i=\tau_{\min}}\alpha_i\Bigr)^{\frac{1}{1-\sigma}}\left(1+\tau_{\min}\right)\qquad(\sigma\to\infty).
+1+T_k\ \longrightarrow\ \Bigl(\sum_{i:\thinspace\tau_i=\tau_{\min}}\alpha_i\Bigr)^{\frac{1}{1-\sigma}}\left(1+\tau_{\min}\right)\qquad(\sigma\to\infty).
 $$
 
 **The tie fix.** T5 originally used the weight $\alpha_{i^\ast}$ of a single minimising supplier $i^\ast$. That is wrong whenever the minimum is shared, as it is here: the domestic node and every duty-free partner sit at $\tau=0$. It made T5 fail at $6.66\times10^{-3}$. The notebook's `run_test_battery` (Task 25) and `_build_chain_a_test_entries_task_22` (Task 22) now use the tie-summed weight $A$. Their signatures and return keys are unchanged; each T5 entry additionally reports how many suppliers or market-states were tied.

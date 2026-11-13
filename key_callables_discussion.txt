@@ -156,7 +156,7 @@ $$
 - **Equations**:
 
 $$
-M_{igt}=\sum_h w_{h\to g}M_{iht},\quad \sum_g w_{h\to g}=1;\qquad \tau^0_{ikt}=\begin{cases}0,& i=\mathrm{DOM}\cr \tau^{\mathrm{APPLIED}}_{ikt},&\mathrm{if\ observed}\cr \min\left(\tau^{\mathrm{PREF}}_{ikt},\tau^{\mathrm{MFN}}_{ikt}\right),&\mathrm{otherwise\ if\ either\ exists}\cr \mathrm{missing},&\mathrm{otherwise.}\end{cases}
+M_{igt}=\sum_h w_{h\to g}M_{iht},\quad \sum_g w_{h\to g}=1;\qquad \tau_{ikt}^0=\begin{cases}0,& i=\mathrm{DOM}\cr \tau_{ikt}^{\mathrm{APPLIED}},&\mathrm{if\ observed}\cr \min\left(\tau_{ikt}^{\mathrm{PREF}},\tau_{ikt}^{\mathrm{MFN}}\right),&\mathrm{otherwise\ if\ either\ exists}\cr \mathrm{missing},&\mathrm{otherwise.}\end{cases}
 $$
 
 - **Implementation distinction**:
@@ -185,7 +185,7 @@ $$
 - **Process**: builds the foreign panel and its applied-tariff lookup (ceiling-capped; cells without a usable rate dropped under `drop_supplier_from_V_k`), adds `DOM` at $\tau=0$, then computes shares, inverts for $\alpha$ and verifies T13.
 - **Outputs**: `shares`, `alpha`, `t13`, `share_sum_min`, `share_sum_max`, `alpha_design`, `alpha_baseline_year`, `alpha_label`, `t13_residual_trajectory` and its path, `output_dir`, drop and cap counters, `task_1_provenance`.
 - **Transformation**: positive flows become market shares; shares and tariff factors become normalised CES weights that reproduce the shares exactly.
-- **Research role**: supplies the weights of Eq. (3), where "$\alpha_i$ represents the corresponding normalized CES weight, with $\sum_i \alpha_i = 1$". The paper gives no rule for constructing them.
+- **Research role**: supplies the weights of Eq. (3), where $\alpha_i$ "represents the corresponding normalized CES weight, with $\sum_i \alpha_i = 1$". The paper gives no rule for constructing them.
 - **Equations**: the exact inversion of the CES share condition:
 
 $$
@@ -310,7 +310,7 @@ $$
 - **Equations**: under the primary `"maximum"` precedence (the `"additive"` alternative sums the two increments), with $\bar\Delta=0.50$ and $\Delta_{\mathrm{DOM}}=0$:
 
 $$
-\tau^{CF}_{ik}=\tau^0_{ik}+\min\left(\max(\Delta^{P}_i,\Delta^{S}_k),\ \bar\Delta\right),\qquad \Delta^{P}_i=\begin{cases}0.15,& i=\mathrm{BOL}\cr 0.10,& i\in S\cr 0,&\mathrm{otherwise}\end{cases},\qquad \Delta^{S}_k=\begin{cases}0.25,& k\in\mathrm{HS4}\ 7208\mathrm{-}7229,\ 7601,7604,7606,7608\cr 0.25,& k\in\mathrm{HS4}\ 8701\mathrm{-}8705,\ 8708\cr 0.50,& k\in\mathrm{HS4}\ 7401\mathrm{-}7419\cr 0,&\mathrm{otherwise.}\end{cases}
+\tau_{ik}^{CF}=\tau_{ik}^0+\min\left(\max(\Delta_i^{P},\Delta_k^{S}),\ \bar\Delta\right),\qquad \Delta_i^{P}=\begin{cases}0.15,& i=\mathrm{BOL}\cr 0.10,& i\in S\cr 0,&\mathrm{otherwise}\end{cases},\qquad \Delta_k^{S}=\begin{cases}0.25,& k\in\mathrm{HS4}\ 7208\mathrm{-}7229,\ 7601,7604,7606,7608\cr 0.25,& k\in\mathrm{HS4}\ 8701\mathrm{-}8705,\ 8708\cr 0.50,& k\in\mathrm{HS4}\ 7401\mathrm{-}7419\cr 0,&\mathrm{otherwise.}\end{cases}
 $$
 
 - **Implementation distinction**: "selected trading partners" is underspecified, so $S$ is enumerated as twelve ISO3 codes (MEX, CAN, JPN, DEU, KOR, GBR, FRA, ITA, BRA, IRQ, CHE, SAU). The amplification gainers CHN, IND and VNM are rejected. The HS lists and the ceiling are declared imputations, and the result is an applied, not a statutory MFN, change.
@@ -340,13 +340,13 @@ $$
 - **Outputs**: `cells` (with `trade_effect_paper`), `residual_report` (with `context`), `conservation`, `upstream`, `artefacts` (`task_18_cell_results.csv`, `task_18_summary.json`).
 - **Transformation**: margin ratios and coefficients become response factors. Within each market of fixed expenditure $E_k=\sum_iM^0_{ik}$, these factors become share reallocations valued in USD millions.
 - **Research role**: implements Eqs. (16)–(17) under the partial-equilibrium closure that holds "expenditures, production, and other determinants of trade fixed".
-- **Equations**: with response factor $\rho_{ik}=(btm^{CF}_{ik}/btm^0_{ik})^{\hat\beta_k}$:
+- **Equations**: with response factor $\rho_{ik}=(btm_{ik}^{CF}/btm_{ik}^0)^{\hat\beta_k}$:
 
 $$
 \Delta Trade_{ik}=\rho_{ik}-1,\qquad s^{CF}_{ik}=\frac{s^0_{ik}\rho_{ik}}{\sum_{j}s^0_{jk}\rho_{jk}},\qquad TE^{\mathrm{cons}}_{ik}=E_k\left(s^{CF}_{ik}-s^0_{ik}\right),\qquad \left\lvert\sum_{i\in V_k}TE^{\mathrm{cons}}_{ik}\right\rvert\le10^{-10}.
 $$
 
-- **Implementation distinction**: the conserving reallocation is the implementation's primary deliverable. The paper's non-conserving $M^0(\rho-1)$, which it prints and which sums to about USD −155.8 billion, is retained only for reconciliation. The gap splits exactly into four parts: excluded cells, fixed-$\alpha$ closure, non-conserving variant, and other aggregation.
+- **Implementation distinction**: the conserving reallocation is the implementation's primary deliverable. The paper's non-conserving $M^0(\rho-1)$, which it prints and which sums to about USD −155.8 billion, is retained only for reconciliation. The gap splits exactly into four parts: excluded cells, closure with $\alpha$ fixed, non-conserving variant, and other aggregation.
 
 ### Task 19 — `run_task_19`
 
@@ -369,7 +369,7 @@ $$
 - **Process**: computes unweighted industry means and the percentage change in margin under two conventions, then verifies them against the seventeen Table 1 targets.
 - **Outputs**: `industry_means`, `delta_btm`, `verification`, `report_path`, `notes`, `eq19_warning`, `upstream`.
 - **Transformation**: cell margins and elasticities become per-industry means; the primary ratio-of-means convention is reported beside a mean-of-ratios convention.
-- **Research role**: implements Table 1, whose notes define "$\Delta BTM = (BTM_{SIM}/BTM_{CES} - 1) \times 100$". The text reports that "13 of the 17 reported industries exhibit an increase in the mean margin, whereas four exhibit a decrease".
+- **Research role**: implements Table 1, whose notes define $\Delta BTM = (BTM_{SIM}/BTM_{CES} - 1) \times 100$. The text reports that "13 of the 17 reported industries exhibit an increase in the mean margin, whereas four exhibit a decrease".
 - **Equations**: for industry $g$ with $n_g$ cells:
 
 $$
@@ -388,7 +388,7 @@ $$
 - **Equations**: by industry $g$ and origin (international or domestic), then by exporter $i$:
 
 $$
-G_g=\sum_{c\in g:\ TE_c\gt0}TE_c,\qquad L_g=\sum_{c\in g:\ TE_c\lt0}TE_c,\qquad \mathrm{Net}_g=G_g+L_g;\qquad \%^{\mathrm{pred}}_i=\frac{\mathrm{Net}_i}{\widehat M^0_i}\times100,\qquad \%^{\mathrm{obs}}_i=\frac{\mathrm{Net}_i}{M^0_i}\times100 .
+G_g=\sum_{c\in g:\ TE_c\gt0}TE_c,\qquad L_g=\sum_{c\in g:\ TE_c\lt0}TE_c,\qquad \mathrm{Net}_g=G_g+L_g;\qquad \mathrm{pct}^{\mathrm{pred}}_i=\frac{\mathrm{Net}_i}{\widehat M^0_i}\times100,\qquad \mathrm{pct}^{\mathrm{obs}}_i=\frac{\mathrm{Net}_i}{M^0_i}\times100 .
 $$
 
 - **Implementation distinction**: the four printed Table 2 cells are compared with the non-conserving variant, and Table 3's fifteen targets with both readings. The two denominators are flagged, never silently reconciled. The paper's −155,800 is a comparison constant, not a target.
@@ -406,7 +406,7 @@ $$
 \frac{\partial\ln btm_{ik}}{\partial\ln(1+\tau_{jk})}=\omega_{jk}-\mathbb{1}[i=j],\qquad \sum_{j\in V_k}\frac{\partial\ln\widehat M_{ik}}{\partial\ln(1+\tau_{jk})}=\hat\beta_k\left(\sum_{j\in V_k}\omega_{jk}-1\right)=0\ \ (\pm10^{-12}).
 $$
 
-- **Implementation distinction**: `all_passed` requires all sixteen ids to be present and passed. T5 and T11 are listed as departures because their binding basis differs from the configured identity: T5 binds a Laplace-extraction statistic, since at $\sigma=1000$ the raw gap to $\min_i(1+\tau_i)$ cannot meet $10^{-6}$ with near-uniform weights. The extraction uses the summed weight $A$ of every supplier tied at the minimum factor, $(1+T_k)\,A^{1/(\sigma-1)}\to\min_i(1+\tau_i)$, and reports the tie count.
+- **Implementation distinction**: `all_passed` requires all sixteen ids to be present and passed. T5 and T11 are listed as departures because their binding basis differs from the configured identity: T5 binds a Laplace-extraction statistic, since at $\sigma=1000$ the raw gap to $\min_i(1+\tau_i)$ cannot meet $10^{-6}$ with near-uniform weights. The extraction uses the summed weight $A$ of every supplier tied at the minimum factor, $(1+T_k)\thinspace A^{1/(\sigma-1)}\to\min_i(1+\tau_i)$, and reports the tie count.
 
 ### Task 23 — `run_task_23`
 
@@ -434,11 +434,11 @@ $$
 - **Process**: computes the single-multiplier calibration hazard, tests the three reconciliations, and issues per-reconciliation and global verdicts. The hazard report is written as CSV.
 - **Outputs**: `task`, `study_id`, `steps_executed`, task-1 provenance flags, `output_dir`, `artefact`, `hazard_report_path`, `hazard`, `reconciliations`, `verdict`, `hazard_report`, `closing_reconciliation`, `global_verdict`, `carry_to_replication_note`, `parameters_adjusted` (always `False`), `provenance`.
 - **Transformation**: one industry's mean elasticity and mean margin change become an implied expansion. Its gap to the printed net is then classified as `closes`, `does_not_close` or `not_computable`.
-- **Research role**: confronts Table 1 with Table 2 for medical, precision and optical instruments. There, $\bar\sigma=64.33$ and $\Delta BTM=+7.88\%$, yet "modest net gains for foreign suppliers coexist with a much larger predicted contraction in domestic trade": foreign net is $1{,}162-515=647$, and the total net is −48,115.
+- **Research role**: confronts Table 1 with Table 2 for medical, precision and optical instruments. There, $\bar\sigma=64.33$ and $\Delta BTM=+7.88$ percent, yet "modest net gains for foreign suppliers coexist with a much larger predicted contraction in domestic trade": foreign net is $1{,}162-515=647$, and the total net is −48,115.
 - **Equations**: under $\sigma=\beta+1$:
 
 $$
-\Delta\ln btm=\ln(1.0788)=0.07585,\qquad \Delta\ln M=(64.33-1)\times0.07585=4.8035,\qquad e^{4.8035}-1\approx120.94\ \ (\approx12{,}094\%).
+\Delta\ln btm=\ln(1.0788)=0.07585,\qquad \Delta\ln M=(64.33-1)\times0.07585=4.8035,\qquad e^{4.8035}-1\approx120.94\ \ (\approx12{,}094\ \text{percent}).
 $$
 
 - **Implementation distinction**: the three reconciliations tested are product-level masking, a map that is not the identity, and offsetting signs within an industry. Under Design A, the first and third require Design B and are `not_computable`. No parameter is tuned to close the gap. The configuration's recorded 12,102% is a rounding of the 12,094% above.
@@ -461,7 +461,6 @@ $$
 
 - **Implementation distinction**: on a single-period panel $\ln btm$ is collinear with the fixed effects. A rank-deficient, non-converged or extreme fit therefore falls back to $\beta_k=\sigma_k-1$, with the reason recorded. Design B halts at the iteration cap, and every catalogue callable must have been invoked.
 
-
 ### Task 26 — `run_task_26`
 
 - **Inputs**: `study_config` (grid axes, Table 1–3 quantity keys), `orchestrator` (injected Chain B orchestrator), `output_dir`, `dependency_outputs`, `audit_fraction`.
@@ -472,7 +471,7 @@ $$
 - **Equations**: with $n$ grid values and the all-primary value $v^\ast$:
 
 $$
-\mathrm{range}=\max_c v_c-\min_c v_c,\qquad \mathrm{pos}=1+\#\lbrace c:v_c\lt v^\ast\rbrace,\qquad \mathrm{pct}=100\frac{\mathrm{pos}-1}{n-1},\qquad \mathrm{sensitive}\iff\mathrm{pct}\lt25\ \vee\ \mathrm{pct}\gt75 .
+\mathrm{range}=\max_c v_c-\min_c v_c,\qquad \mathrm{pos}=1+\left\lvert\lbrace c:v_c\lt v^\ast\rbrace\right\rvert,\qquad \mathrm{pct}=100\frac{\mathrm{pos}-1}{n-1},\qquad \mathrm{sensitive}\iff\mathrm{pct}\lt25\ \vee\ \mathrm{pct}\gt75 .
 $$
 
 - **Implementation distinction**: bounds are reported instead of a point estimate. A failing cell is recorded, not dropped. The audit requires exact equality on recomputation, and the all-primary cell must exist and be unique.
@@ -491,7 +490,7 @@ $$
 - **Equations**: with $H$ = SHA-256:
 
 $$
-\mathrm{input\_hash}=H\left(\mathrm{sorted}\ \lbrace\mathrm{name}=\mathrm{checksum}\rbrace\right),\qquad \mathrm{run\_id}=\mathrm{run}\text{-}\mathrm{input\_hash}_{[0:12]}\text{-}H(\mathrm{environment\_pin})_{[0:12]}.
+\mathrm{input\unicode{95}hash}=H\left(\mathrm{sorted}\ \lbrace\mathrm{name}=\mathrm{checksum}\rbrace\right),\qquad \mathrm{run\unicode{95}id}=\mathrm{run}\text{-}\mathrm{input\unicode{95}hash}_{[0:12]}\text{-}H(\mathrm{environment\unicode{95}pin})_{[0:12]}.
 $$
 
 - **Implementation distinction**: a missing file or digest mismatch aborts the run before the note is written. The base image must carry a verified, non-zero digest; the backend must be MKL or OpenBLAS and Python 3.11 or 3.12.
